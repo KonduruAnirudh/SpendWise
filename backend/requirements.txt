@@ -1,0 +1,9 @@
+fastapi[standard]
+sqlalchemy
+alembic
+psycopg[binary]
+pydantic-settings
+pyjwt
+pwdlib[argon2]
+openai
+pytest

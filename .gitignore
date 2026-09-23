@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Secrets — NEVER commit
+.env
+
+# Uploaded bills (keep the folder, ignore contents)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Frontend
+node_modules/
+dist/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
