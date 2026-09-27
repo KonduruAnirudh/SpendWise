@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: spendwise
       POSTGRES_DB: spendwise
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - spendwise_data:/var/lib/postgresql/data
     healthcheck:

@@ -12,3 +12,4 @@ def test_health_returns_ok():
     body = response.json()
     assert body["status"] == "ok"
     assert body["app"] == "SpendWise"
+    assert body["database"] == "ok"
