@@ -9,6 +9,7 @@ import app.models  # noqa: F401  (registers all tables on Base.metadata)
 from app.core.config import settings
 from app.core.dependencies import get_db
 from app.db.base import Base
+from app.db.seed import seed_default_categories
 from app.main import app
 
 TEST_DB_NAME = settings.test_database_url.rsplit("/", 1)[-1]
@@ -22,6 +23,7 @@ TestSessionLocal = sessionmaker(bind=test_engine, autoflush=False)
 def db() -> Generator[Session, None, None]:
     Base.metadata.create_all(test_engine)
     session = TestSessionLocal()
+    seed_default_categories(session)
     try:
         yield session
     finally:
