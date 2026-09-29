@@ -12,3 +12,8 @@ class AccountType(StrEnum):
 class CategoryType(StrEnum):
     INCOME = "income"
     EXPENSE = "expense"
+
+
+class MemberRole(StrEnum):
+    OWNER = "owner"
+    MEMBER = "member"
