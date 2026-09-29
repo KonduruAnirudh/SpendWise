@@ -6,6 +6,7 @@ from app.api.v1.routes import (
     categories,
     dashboard,
     group_expenses,
+    group_settlements,
     groups,
     health,
     transactions,
@@ -22,3 +23,4 @@ api_router.include_router(transactions.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(groups.router)
 api_router.include_router(group_expenses.router)
+api_router.include_router(group_settlements.router)
