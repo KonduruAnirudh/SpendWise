@@ -30,6 +30,10 @@ class ConflictError(AppError):
     status_code = 409
 
 
+class ServiceUnavailableError(AppError):
+    status_code = 503
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:

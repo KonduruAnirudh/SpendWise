@@ -27,3 +27,8 @@ class SplitMethod(StrEnum):
     ADJUSTMENT = "adjustment"
     REIMBURSEMENT = "reimbursement"
     ITEMIZED = "itemized"
+
+
+class ChatRole(StrEnum):
+    USER = "user"
+    ASSISTANT = "assistant"

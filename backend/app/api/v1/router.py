@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.routes import (
     accounts,
+    ai,
     auth,
     categories,
     dashboard,
@@ -24,3 +25,4 @@ api_router.include_router(dashboard.router)
 api_router.include_router(groups.router)
 api_router.include_router(group_expenses.router)
 api_router.include_router(group_settlements.router)
+api_router.include_router(ai.router)

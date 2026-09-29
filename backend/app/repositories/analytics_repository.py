@@ -72,3 +72,27 @@ def largest_expenses(db: Session, user_id: int, start: date, end: date, limit: i
         .limit(limit)
     )
     return list(db.scalars(stmt))
+
+
+
+def filtered_totals(
+    db: Session,
+    user_id: int,
+    start: date,
+    end: date,
+    category_id: int | None = None,
+    weekend: bool | None = None,
+) -> dict[CategoryType, tuple[Decimal, int]]:
+    conditions = list(_in_period(user_id, start, end))
+    if category_id is not None:
+        conditions.append(Transaction.category_id == category_id)
+    if weekend is not None:
+        day_of_week = func.date_part("isodow", Transaction.occurred_on)
+        conditions.append(day_of_week.in_([6, 7]) if weekend else day_of_week.notin_([6, 7]))
+
+    stmt = (
+        select(Transaction.type, func.sum(Transaction.amount), func.count(Transaction.id))
+        .where(*conditions)
+        .group_by(Transaction.type)
+    )
+    return {transaction_type: (total, count) for transaction_type, total, count in db.execute(stmt)}
