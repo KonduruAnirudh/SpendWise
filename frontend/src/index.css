@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  --color-bg: var(--sw-bg);
+  --color-surface: var(--sw-surface);
+  --color-card: var(--sw-card);
+  --color-border: var(--sw-border);
+  --color-fg: var(--sw-fg);
+  --color-muted: var(--sw-muted);
+  --color-subtle: var(--sw-subtle);
+  --color-accent: var(--sw-accent);
+  --color-accent-fg: var(--sw-accent-fg);
+  --color-accent-muted: var(--sw-accent-muted);
+  --color-success: var(--sw-success);
+  --color-danger: var(--sw-danger);
+  --color-sidebar: var(--sw-sidebar);
+  --color-hover: var(--sw-hover);
+
+  --animate-fade-in: fade-in 180ms ease-out;
+  --animate-slide-up: slide-up 220ms ease-out;
+  --animate-scale-in: scale-in 180ms ease-out;
+}
+
+:root {
+  --sw-bg: #f6f3ec;
+  --sw-surface: #fffcf7;
+  --sw-card: #ffffff;
+  --sw-border: #e6e1d6;
+  --sw-fg: #1a1916;
+  --sw-muted: #6e6c64;
+  --sw-subtle: #9a978c;
+  --sw-accent: #b08d1f;
+  --sw-accent-fg: #1a1916;
+  --sw-accent-muted: rgba(176, 141, 31, 0.14);
+  --sw-success: #2f7d4a;
+  --sw-danger: #c23b3b;
+  --sw-sidebar: #f0ece3;
+  --sw-hover: rgba(26, 25, 22, 0.05);
+}
+
+.dark {
+  --sw-bg: #0b0b0a;
+  --sw-surface: #111110;
+  --sw-card: #161614;
+  --sw-border: #2a2a26;
+  --sw-fg: #f4f1ea;
+  --sw-muted: #9c9a92;
+  --sw-subtle: #6e6c64;
+  --sw-accent: #d4af37;
+  --sw-accent-fg: #0b0b0a;
+  --sw-accent-muted: rgba(212, 175, 55, 0.14);
+  --sw-success: #5dba7a;
+  --sw-danger: #e05a5a;
+  --sw-sidebar: #0e0e0c;
+  --sw-hover: rgba(244, 241, 234, 0.05);
+}
+
+@layer base {
+  * {
+    border-color: var(--sw-border);
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--sw-bg);
+    color: var(--sw-fg);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    min-height: 100svh;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  ::selection {
+    background: var(--sw-accent-muted);
+    color: var(--sw-fg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sw-border) transparent;
+}

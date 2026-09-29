@@ -1,0 +1,73 @@
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+export function isValidEmail(value) {
+  return EMAIL_PATTERN.test(String(value).trim())
+}
+
+export function validateLogin({ email, password }) {
+  const errors = {}
+  if (!email?.trim()) errors.email = 'Email is required.'
+  else if (!isValidEmail(email)) errors.email = 'Please enter a valid email address.'
+  if (!password) errors.password = 'Password is required.'
+  else if (password.length < 8) errors.password = 'Password must be at least 8 characters.'
+  return errors
+}
+
+export function validateSignup({ name, email, password, confirmPassword, terms }) {
+  const errors = validateLogin({ email, password })
+  if (!name?.trim()) errors.name = 'Full name is required.'
+  if (password && confirmPassword !== password) {
+    errors.confirmPassword = 'Passwords do not match.'
+  }
+  if (!confirmPassword) errors.confirmPassword = 'Please confirm your password.'
+  if (!terms) errors.terms = 'Please accept the terms to continue.'
+  return errors
+}
+
+export function validateTransaction(values) {
+  const errors = {}
+  if (!values.date) errors.date = 'Date is required.'
+  if (!values.type) errors.type = 'Type is required.'
+  if (!values.amount || Number(values.amount) <= 0) errors.amount = 'Enter a valid amount.'
+  if (!values.description?.trim()) errors.description = 'Description is required.'
+  if (!values.categoryId) errors.categoryId = 'Category is required.'
+  if (!values.accountId) errors.accountId = 'Account is required.'
+  return errors
+}
+
+export function validateAccount(values) {
+  const errors = {}
+  if (!values.name?.trim()) errors.name = 'Account name is required.'
+  if (!values.type) errors.type = 'Account type is required.'
+  if (values.balance === '' || Number.isNaN(Number(values.balance))) {
+    errors.balance = 'Enter a valid balance.'
+  }
+  return errors
+}
+
+export function validatePerson(values) {
+  const errors = {}
+  if (!values.name?.trim()) errors.name = 'Name is required.'
+  if (values.email && !isValidEmail(values.email)) errors.email = 'Please enter a valid email address.'
+  return errors
+}
+
+export function validateSharedExpense(values, splits) {
+  const errors = {}
+  if (values.splitMethod !== 'reimbursement' && !values.name?.trim()) errors.name = 'Expense name is required.'
+  if (!values.amount || Number(values.amount) <= 0) errors.amount = 'Enter a valid amount.'
+  if (!values.paidBy) errors.paidBy = 'Select who paid.'
+  if (!values.splitMethod) errors.splitMethod = 'Select a split method.'
+  if (values.splitMethod === 'reimbursement') {
+    if (!values.receivedBy) errors.receivedBy = 'Select who received the reimbursement.'
+    if (values.paidBy && values.receivedBy && values.paidBy === values.receivedBy) {
+      errors.receivedBy = 'Payer and receiver cannot be the same person.'
+    }
+    return errors
+  }
+  const total = splits.reduce((sum, split) => sum + Number(split.amount || 0), 0)
+  if (Math.abs(total - Number(values.amount || 0)) > 0.5) {
+    errors.splits = 'Split amounts must equal the expense total.'
+  }
+  return errors
+}

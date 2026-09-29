@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="currentColor" opacity="0.12"/>
+  <rect x="1" y="1" width="30" height="30" rx="7" stroke="currentColor" stroke-width="1.4"/>
+  <path
+    d="M21.6 9.4C18.2 7.6 11.6 8.4 11.4 13c-.2 3.8 8.4 2.4 8.4 6.6 0 3.6-6.2 4.6-10 2.6"
+    stroke="currentColor"
+    stroke-width="2.3"
+    stroke-linecap="round"
+  />
+  <circle cx="21.7" cy="9.3" r="1.65" fill="currentColor"/>
+  <path d="M8.2 22.6h1.9v-3H8.2zm2.7 0h1.9v-4.8h-1.9zm2.7 0h1.9V14.9h-1.9z" fill="currentColor"/>
+</svg>
