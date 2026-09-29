@@ -103,7 +103,7 @@ def remove_member(db: Session, membership: GroupMember, member_id: int) -> None:
 
 def delete_group(db: Session, membership: GroupMember) -> None:
     _require_owner(membership, "Only the group owner can delete the group")
-    group_repository.delete(db, membership.group)
+    group_repository.delete_group_by_id(db, membership.group_id)
     db.commit()
 
 

@@ -1,7 +1,9 @@
+from sqlalchemy import delete as sql_delete
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.group import Group, GroupMember
+from app.models.group_expense import GroupExpense
 
 
 def list_memberships_for_user(db: Session, user_id: int) -> list[GroupMember]:
@@ -33,3 +35,9 @@ def add(db: Session, obj: Group | GroupMember) -> None:
 
 def delete(db: Session, obj: Group | GroupMember) -> None:
     db.delete(obj)
+
+
+def delete_group_by_id(db: Session, group_id: int) -> None:
+    # Children first: expenses (their splits cascade), then the group (its members cascade).
+    db.execute(sql_delete(GroupExpense).where(GroupExpense.group_id == group_id))
+    db.execute(sql_delete(Group).where(Group.id == group_id))

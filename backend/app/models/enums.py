@@ -17,3 +17,13 @@ class CategoryType(StrEnum):
 class MemberRole(StrEnum):
     OWNER = "owner"
     MEMBER = "member"
+
+
+class SplitMethod(StrEnum):
+    EQUAL = "equal"
+    EXACT = "exact"
+    PERCENTAGE = "percentage"
+    SHARES = "shares"
+    ADJUSTMENT = "adjustment"
+    REIMBURSEMENT = "reimbursement"
+    ITEMIZED = "itemized"
