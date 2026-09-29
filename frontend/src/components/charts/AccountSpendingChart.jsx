@@ -8,6 +8,8 @@ export function AccountSpendingChart({ data }) {
   const grid = resolved === 'dark' ? '#2a2a26' : '#e6e1d6'
   const tooltipBg = resolved === 'dark' ? '#161614' : '#ffffff'
 
+  if (!data.length) return <p className="py-10 text-center text-sm text-muted">No expenses in this period.</p>
+
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { IncomeTrackingPrompt } from '../../components/layout/IncomeTrackingPrompt'
 import { Card, CardHeader } from '../../components/ui/Card'
@@ -12,7 +12,6 @@ import { MonthlySpendingChart } from '../../components/charts/MonthlySpendingCha
 import { useAuth } from '../../context/AuthContext'
 import { useAsync } from '../../hooks/useAsync'
 import { analyticsService } from '../../services/analyticsService'
-import { transactionService } from '../../services/transactionService'
 import { expenseService } from '../../services/expenseService'
 import { categoryService } from '../../services/categoryService'
 import { accountService } from '../../services/accountService'
@@ -23,12 +22,11 @@ export function DashboardPage() {
   const { user, updateUser } = useAuth()
   const navigate = useNavigate()
   const dashboard = useAsync(() => analyticsService.getDashboard(), [])
-  const transactions = useAsync(() => transactionService.list(), [])
   const sharing = useAsync(() => expenseService.getSummary(), [])
   const categories = useAsync(() => categoryService.list(), [])
   const accounts = useAsync(() => accountService.list(), [])
 
-  if (dashboard.loading || transactions.loading || sharing.loading) {
+  if (dashboard.loading || sharing.loading) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
         <SkeletonCard />
@@ -43,9 +41,9 @@ export function DashboardPage() {
     return <ErrorState message="Unable to load your dashboard." onRetry={dashboard.refetch} />
   }
 
-  const { summary, monthlySeries, categorySpending } = dashboard.data
+  const { summary, monthlySeries, categorySpending, recentTransactions } = dashboard.data
   const categoryName = (id) => categories.data?.find((item) => item.id === id)?.name || 'Other'
-  const recent = (transactions.data || []).slice(0, 4)
+  const recent = (recentTransactions || []).slice(0, 4)
   const tracking = user?.incomeTracking
   const showIncome = tracking === 'regular' || (tracking === 'occasional' && summary.income > 0)
   const availableFunds = (accounts.data || [])
@@ -71,12 +69,7 @@ export function DashboardPage() {
           <SummaryStat
             label="Savings rate"
             value={formatPercent(summary.savingsRate)}
-            hint={
-              <span className="mt-2 inline-flex items-center gap-1 text-xs text-success">
-                <ArrowDownRight className="size-3.5" />
-                Compared to last month {summary.momChange}%
-              </span>
-            }
+            hint={<ChangeHint change={summary.momChange} />}
           />
         </div>
       ) : (
@@ -88,13 +81,8 @@ export function DashboardPage() {
           />
           <SummaryStat
             label="Monthly spending"
-            value={`${summary.momChange}%`}
-            hint={
-              <span className="mt-2 inline-flex items-center gap-1 text-xs text-success">
-                <ArrowDownRight className="size-3.5" />
-                Compared to last month
-              </span>
-            }
+            value={formatChange(summary.momChange)}
+            hint={<ChangeHint change={summary.momChange} />}
           />
         </div>
       )}
@@ -195,6 +183,32 @@ export function DashboardPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+function formatChange(change) {
+  if (change === null || change === undefined) return '—'
+  return `${change > 0 ? '+' : ''}${change}%`
+}
+
+// Spending going up is bad news (red, up arrow); going down is good news (green, down arrow).
+function ChangeHint({ change }) {
+  if (change === null || change === undefined) {
+    return (
+      <span className="mt-2 inline-flex items-center gap-1 text-xs text-muted">
+        <Minus className="size-3.5" />
+        No spending last month to compare
+      </span>
+    )
+  }
+  const Icon = change > 0 ? ArrowUpRight : change < 0 ? ArrowDownRight : Minus
+  const tone = change > 0 ? 'text-danger' : change < 0 ? 'text-success' : 'text-muted'
+  const text = change === 0 ? 'Same as last month' : `${formatChange(change)} spending vs last month`
+  return (
+    <span className={`mt-2 inline-flex items-center gap-1 text-xs ${tone}`}>
+      <Icon className="size-3.5" />
+      {text}
+    </span>
   )
 }
 
