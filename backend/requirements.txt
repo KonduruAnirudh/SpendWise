@@ -1,9 +1,11 @@
-fastapi[standard]
-sqlalchemy
-alembic
-psycopg[binary]
-pydantic-settings
-pyjwt
-pwdlib[argon2]
-openai
-pytest
+# Top-level dependencies, pinned to the versions the project is tested with (Python 3.12).
+# Transitive dependencies are resolved by pip; see README for the upgrade workflow.
+fastapi[standard]==0.141.1
+sqlalchemy==2.0.54
+alembic==1.20.0
+psycopg[binary]==3.3.6
+pydantic-settings==2.15.0
+pyjwt==2.14.0
+pwdlib[argon2]==0.3.1
+openai==3.19.0
+pytest==9.1.1
