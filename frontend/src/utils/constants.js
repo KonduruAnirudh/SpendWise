@@ -85,3 +85,13 @@ export const CATEGORY_COLORS = {
   Investment: '#7d8f69',
   Other: '#9c9a92',
 }
+
+// Questions the AI assistant can answer with its read-only tools.
+export const AI_SUGGESTED_PROMPTS = [
+  'How much did I spend this month?',
+  'What were my biggest expenses this month?',
+  'Which category did I spend the most on?',
+  'How has my spending changed over the last 3 months?',
+  'What are my account balances?',
+  'Who owes me money in my groups?',
+]
