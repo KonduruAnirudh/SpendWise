@@ -1,16 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { formatAuth0Error } from '../../Auth/AuthGate'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { authService } from '../../services/authService'
-import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { validateSignup } from '../../utils/validators'
 
 export function SignupPage() {
   const navigate = useNavigate()
-  const { loginWithAuth0, isAuth0Enabled } = useAuth()
   const { push } = useToast()
   const [values, setValues] = useState({
     name: '',
@@ -21,7 +18,6 @@ export function SignupPage() {
   })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
-  const [auth0Submitting, setAuth0Submitting] = useState(false)
   const [formError, setFormError] = useState('')
 
   async function handleSubmit(event) {
@@ -67,33 +63,6 @@ export function SignupPage() {
         <Button type="submit" className="w-full" loading={submitting}>
           Create account
         </Button>
-        {isAuth0Enabled && (
-          <>
-            <div className="flex items-center gap-3 text-xs text-subtle">
-              <span className="h-px flex-1 bg-border" />
-              or
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              loading={auth0Submitting}
-              onClick={async () => {
-                setFormError('')
-                setAuth0Submitting(true)
-                try {
-                  await loginWithAuth0('/dashboard')
-                } catch (error) {
-                  setFormError(formatAuth0Error(error))
-                  setAuth0Submitting(false)
-                }
-              }}
-            >
-              Continue with Auth0
-            </Button>
-          </>
-        )}
       </form>
       <p className="mt-6 text-center text-sm text-muted">
         Already have an account?{' '}

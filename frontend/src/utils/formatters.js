@@ -15,13 +15,6 @@ export function formatCurrency(amount, currency = 'INR', options = {}) {
   }).format(value)
 }
 
-export function formatSignedCurrency(amount, currency = 'INR') {
-  const formatted = formatCurrency(Math.abs(amount), currency)
-  if (amount > 0) return `+ ${formatted}`
-  if (amount < 0) return `− ${formatted}`
-  return formatted
-}
-
 export function formatPercent(value, fractionDigits = 1) {
   return `${Number(value).toFixed(fractionDigits)}%`
 }
@@ -53,10 +46,6 @@ export function greetingForHour(date = new Date()) {
   if (hour < 12) return 'Good morning'
   if (hour < 17) return 'Good afternoon'
   return 'Good evening'
-}
-
-export function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export function generateId(prefix = 'id') {

@@ -49,11 +49,6 @@ export function AuthProvider({ children }) {
     [persist],
   )
 
-  // Kept so existing pages that reference it still compile; SSO is not enabled.
-  const loginWithAuth0 = useCallback(async () => {
-    throw new Error('Single sign-on is not enabled for this app.')
-  }, [])
-
   const logout = useCallback(() => persist(null), [persist])
 
   const updateUser = useCallback(
@@ -73,14 +68,11 @@ export function AuthProvider({ children }) {
       token: session?.token ?? null,
       isAuthenticated: Boolean(session?.token),
       isLoading: false,
-      isAuth0Enabled: false,
-      authError: undefined,
       login,
-      loginWithAuth0,
       logout,
       updateUser,
     }),
-    [session, login, loginWithAuth0, logout, updateUser],
+    [session, login, logout, updateUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

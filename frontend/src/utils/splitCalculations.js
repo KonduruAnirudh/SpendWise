@@ -15,18 +15,6 @@ export function roundMoney(value) {
   return fromPaise(toPaise(value))
 }
 
-export function sumAmounts(rows) {
-  return fromPaise(rows.reduce((sum, row) => sum + toPaise(row.amount), 0))
-}
-
-export function amountsMatch(total, parts) {
-  return toPaise(total) === rows(parts).reduce((sum, row) => sum + toPaise(row.amount), 0)
-}
-
-function rows(value) {
-  return value || []
-}
-
 // Split totalPaise in proportion to weights (largest-remainder method, exact BigInt arithmetic).
 // Ties go to the earlier member; members arrive ordered by id, like the backend's tie-break.
 function allocate(totalPaise, weights) {
@@ -131,7 +119,7 @@ export function sharesTotal(sharesById = {}) {
 export function validateSplit({ method, members, total, splits, percentsById, sharesById, extrasById, items, paidBy, receivedBy }) {
   const errors = {}
   const totalPaise = toPaise(total)
-  const splitPaise = rows(splits).reduce((sum, row) => sum + toPaise(row.amount), 0)
+  const splitPaise = (splits || []).reduce((sum, row) => sum + toPaise(row.amount), 0)
 
   if (!members?.length) errors.members = 'Add at least one member before splitting.'
   if (method !== 'itemized' && totalPaise <= 0) errors.amount = 'Enter a valid amount.'
@@ -151,14 +139,14 @@ export function validateSplit({ method, members, total, splits, percentsById, sh
     else if (sharesTotal(sharesById) <= 0) errors.splits = 'Total shares must be greater than 0.'
   }
   if (method === 'adjustment') {
-    const extras = rows(members).reduce((sum, member) => sum + toPaise(extrasById?.[member.id]), 0)
+    const extras = (members || []).reduce((sum, member) => sum + toPaise(extrasById?.[member.id]), 0)
     if (extras > totalPaise) errors.splits = 'Adjustments add up to more than the total.'
-    else if (rows(splits).some((row) => toPaise(row.amount) < 0)) {
+    else if ((splits || []).some((row) => toPaise(row.amount) < 0)) {
       errors.splits = "An adjustment makes someone's share negative."
     }
   }
   if (method === 'itemized') {
-    const lines = rows(items)
+    const lines = items || []
     if (!lines.length) errors.splits = 'Add at least one item.'
     else if (lines.some((item) => toPaise(item.amount) <= 0)) errors.splits = 'Every item needs an amount.'
     else if (lines.some((item) => !(item.assignedPersonIds || []).length)) {

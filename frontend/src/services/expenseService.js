@@ -1,26 +1,6 @@
 import { api } from './api'
-import { withMock } from './mockStore'
-import { expensesStore, groupsStore, settlementsStore, balancesStore } from './sharingStore'
-import { currentUser } from '../mock/user'
-import { generateId } from '../utils/formatters'
 import { fromPaise, itemizedLines, toPaise } from '../utils/splitCalculations'
-import { SHARING_SERVICE, groupService } from './groupService'
-
-function inGroup(item, groupId) {
-  return !groupId || item.groupId === groupId
-}
-
-function summaryFromSettlements() {
-  const pending = settlementsStore.all().filter((item) => item.status !== 'settled')
-  return {
-    youOwe: pending
-      .filter((item) => item.fromId === currentUser.id)
-      .reduce((sum, item) => sum + Number(item.amount || 0), 0),
-    youAreOwed: pending
-      .filter((item) => item.toId === currentUser.id)
-      .reduce((sum, item) => sum + Number(item.amount || 0), 0),
-  }
-}
+import { groupService } from './groupService'
 
 // ---------- Adapters: backend contract ↔ shapes the sharing pages use ----------
 const money = (value) => fromPaise(toPaise(value)).toFixed(2)
@@ -128,21 +108,15 @@ async function listGroupExpenses(groupId, groupName) {
 export const expenseService = {
   // Totals across all groups, from each group's net position for the current user.
   async getSummary() {
-    return withMock(
-      () => summaryFromSettlements(),
-      async () => {
-        const positions = await api.get('/users/me/group-balances')
-        let owe = 0
-        let owed = 0
-        positions.forEach((position) => {
-          const net = toPaise(position.my_net)
-          if (net < 0) owe -= net
-          else owed += net
-        })
-        return { youOwe: fromPaise(owe), youAreOwed: fromPaise(owed) }
-      },
-      SHARING_SERVICE,
-    )
+    const positions = await api.get('/users/me/group-balances')
+    let owe = 0
+    let owed = 0
+    positions.forEach((position) => {
+      const net = toPaise(position.my_net)
+      if (net < 0) owe -= net
+      else owed += net
+    })
+    return { youOwe: fromPaise(owe), youAreOwed: fromPaise(owed) }
   },
 
   listGroups: groupService.list,
@@ -150,197 +124,57 @@ export const expenseService = {
   createGroup: groupService.create,
 
   async listExpenses(groupId) {
-    return withMock(
-      () => expensesStore.all().filter((item) => !groupId || item.groupId === groupId),
-      async () => {
-        if (groupId) return listGroupExpenses(groupId)
-        const groups = await api.get('/groups')
-        const perGroup = await Promise.all(groups.map((group) => listGroupExpenses(group.id, group.name)))
-        return perGroup.flat().sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
-      },
-      SHARING_SERVICE,
-    )
+    if (groupId) return listGroupExpenses(groupId)
+    const groups = await api.get('/groups')
+    const perGroup = await Promise.all(groups.map((group) => listGroupExpenses(group.id, group.name)))
+    return perGroup.flat().sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
   },
 
+  // The server recomputes the split; the saved amounts in the response are the real ones.
   async createExpense(payload) {
-    return withMock(
-      () => {
-        const item = {
-          id: generateId('exp'),
-          date: new Date().toISOString().slice(0, 10),
-          ...payload,
-          amount: Number(payload.amount) || 0,
-          splits: (payload.splits || []).map((split) => ({
-            personId: split.personId || split.memberId,
-            memberId: split.memberId || split.personId,
-            amount: Number(split.amount) || 0,
-            percent: split.percent,
-            shares: split.shares,
-          })),
-        }
-        expensesStore.update((rows) => [item, ...rows])
-        if (item.groupId) {
-          groupsStore.update((groups) =>
-            groups.map((group) =>
-              group.id === item.groupId
-                ? {
-                    ...group,
-                    totalExpenses: Number(group.totalExpenses || 0) + item.amount,
-                    lastActivity: item.date,
-                  }
-                : group,
-            ),
-          )
-        }
-        return item
-      },
-      // The server recomputes the split; the saved amounts in the response are the real ones.
-      async () => toUiExpense(await api.post(`/groups/${payload.groupId}/expenses`, toApiExpense(payload)), payload.groupId),
-      SHARING_SERVICE,
-    )
+    return toUiExpense(await api.post(`/groups/${payload.groupId}/expenses`, toApiExpense(payload)), payload.groupId)
+  },
+
+  // A reimbursement is an ordinary expense with split_method "reimbursement".
+  async createReimbursement(payload) {
+    return expenseService.createExpense({ ...payload, splitMethod: 'reimbursement' })
   },
 
   async deleteExpense(groupId, expenseId) {
-    return withMock(
-      () => {
-        expensesStore.update((rows) => rows.filter((row) => row.id !== expenseId))
-        return { id: expenseId }
-      },
-      async () => {
-        await api.delete(`/groups/${groupId}/expenses/${expenseId}`)
-        return { id: expenseId }
-      },
-      SHARING_SERVICE,
-    )
+    await api.delete(`/groups/${groupId}/expenses/${expenseId}`)
+    return { id: expenseId }
   },
 
   async getBalances(groupId) {
-    return withMock(
-      () => balancesStore.all().filter((item) => inGroup(item, groupId)),
-      async () => {
-        const data = await api.get(`/groups/${groupId}/balances`)
-        return data.members.map((row) => toUiMemberBalance(row, data.my_member_id))
-      },
-      SHARING_SERVICE,
-    )
+    const data = await api.get(`/groups/${groupId}/balances`)
+    return data.members.map((row) => toUiMemberBalance(row, data.my_member_id))
   },
 
   // Pending = the server's suggested (simplified) payments; settled = recorded settlements.
   async listSettlements(groupId) {
-    return withMock(
-      () => settlementsStore.all().filter((item) => inGroup(item, groupId)),
-      async () => {
-        const [suggested, recorded] = await Promise.all([
-          api.get(`/groups/${groupId}/settlements/suggested`),
-          api.get(`/groups/${groupId}/settlements`),
-        ])
-        return [
-          ...suggested.map((row) => toUiSettlement(groupId, row, 'pending')),
-          ...recorded.map((row) => toUiSettlement(groupId, row, 'settled')),
-        ]
-      },
-      SHARING_SERVICE,
-    )
+    const [suggested, recorded] = await Promise.all([
+      api.get(`/groups/${groupId}/settlements/suggested`),
+      api.get(`/groups/${groupId}/settlements`),
+    ])
+    return [
+      ...suggested.map((row) => toUiSettlement(groupId, row, 'pending')),
+      ...recorded.map((row) => toUiSettlement(groupId, row, 'settled')),
+    ]
   },
 
-  // Records a payment as a fact. Live: `settlement` is the suggested row; mock: its id.
+  // Records a suggested payment as a fact.
   async settle(settlement) {
-    return withMock(
-      () => {
-        const id = settlement?.id ?? settlement
-        let next = null
-        settlementsStore.update((rows) =>
-          rows.map((row) => {
-            if (row.id !== id) return row
-            next = { ...row, status: 'settled' }
-            return next
-          }),
-        )
-        if (next) {
-          balancesStore.update((rows) =>
-            rows.filter(
-              (row) =>
-                !(
-                  row.groupId === next.groupId &&
-                  row.fromId === next.fromId &&
-                  row.toId === next.toId &&
-                  Number(row.amount) === Number(next.amount)
-                ),
-            ),
-          )
-        }
-        return next
-      },
-      async () =>
-        toUiSettlement(
-          settlement.groupId,
-          await api.post(`/groups/${settlement.groupId}/settlements`, {
-            from_member_id: settlement.fromId,
-            to_member_id: settlement.toId,
-            amount: settlement.amountText ?? money(settlement.amount),
-          }),
-          'settled',
-        ),
-      SHARING_SERVICE,
-    )
+    const recorded = await api.post(`/groups/${settlement.groupId}/settlements`, {
+      from_member_id: settlement.fromId,
+      to_member_id: settlement.toId,
+      amount: settlement.amountText ?? money(settlement.amount),
+    })
+    return toUiSettlement(settlement.groupId, recorded, 'settled')
   },
 
   // Deleting a recorded settlement is the undo; balances and suggestions recompute on the server.
   async undoSettlement(settlement) {
-    return withMock(
-      () => {
-        settlementsStore.update((rows) =>
-          rows.map((row) => (row.id === settlement.id ? { ...row, status: 'pending' } : row)),
-        )
-        return { id: settlement.id }
-      },
-      async () => {
-        await api.delete(`/groups/${settlement.groupId}/settlements/${settlement.id}`)
-        return { id: settlement.id }
-      },
-      SHARING_SERVICE,
-    )
-  },
-
-  async createReimbursement(payload) {
-    return withMock(
-      () => {
-        const item = {
-          id: generateId('exp'),
-          name: payload.name || 'Reimbursement',
-          splitMethod: 'reimbursement',
-          date: payload.date || new Date().toISOString().slice(0, 10),
-          ...payload,
-        }
-        expensesStore.update((rows) => [item, ...rows])
-        const settlement = {
-          id: generateId('set'),
-          groupId: payload.groupId,
-          fromId: payload.paidBy,
-          fromName: payload.paidByName,
-          toId: payload.receivedBy,
-          toName: payload.receivedByName,
-          amount: Number(payload.amount) || 0,
-          status: 'pending',
-          type: 'reimbursement',
-        }
-        settlementsStore.update((rows) => [settlement, ...rows])
-        balancesStore.update((rows) => [
-          {
-            groupId: payload.groupId,
-            fromId: payload.paidBy,
-            fromName: payload.paidByName,
-            toId: payload.receivedBy,
-            toName: payload.receivedByName,
-            amount: Number(payload.amount) || 0,
-          },
-          ...rows,
-        ])
-        return { expense: item, settlement }
-      },
-      // A reimbursement is an ordinary expense with split_method "reimbursement".
-      () => expenseService.createExpense({ ...payload, splitMethod: 'reimbursement' }),
-      SHARING_SERVICE,
-    )
+    await api.delete(`/groups/${settlement.groupId}/settlements/${settlement.id}`)
+    return { id: settlement.id }
   },
 }

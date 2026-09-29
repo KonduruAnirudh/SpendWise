@@ -1,4 +1,3 @@
-export const APP_NAME = 'SpendWise'
 export const APP_TAGLINE = 'Understand your money. Spend it wisely.'
 export const DASHBOARD_QUOTE =
   'Small choices today create better financial habits tomorrow.'
@@ -19,15 +18,6 @@ export const ACCOUNT_TYPES = [
   { value: 'credit_card', label: 'Credit Card' },
   { value: 'cash', label: 'Cash' },
   { value: 'wallet', label: 'Wallet / UPI' },
-]
-
-export const PAYMENT_MODES = [
-  'Credit Card',
-  'Debit Card',
-  'UPI',
-  'Cash',
-  'Bank Transfer',
-  'Other',
 ]
 
 export const TRANSACTION_TYPES = [
@@ -63,7 +53,6 @@ export const INCOME_TRACKING_OPTIONS = [
   },
 ]
 
-export const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP']
 export const DATE_FORMATS = [
   { value: 'dd MMM', label: '15 Aug' },
   { value: 'yyyy-mm-dd', label: '2026-08-15' },

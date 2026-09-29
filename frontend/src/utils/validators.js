@@ -45,13 +45,6 @@ export function validateAccount(values) {
   return errors
 }
 
-export function validatePerson(values) {
-  const errors = {}
-  if (!values.name?.trim()) errors.name = 'Name is required.'
-  if (values.email && !isValidEmail(values.email)) errors.email = 'Please enter a valid email address.'
-  return errors
-}
-
 export const emptyMember = { name: '', email: '' }
 
 // Group members: a registered user by email, or a guest by name.

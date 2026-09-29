@@ -1,9 +1,4 @@
 import { api } from './api'
-import { withMock } from './mockStore'
-import { aiResponses, defaultAiAnswer } from '../mock/aiResponses'
-import { generateId } from '../utils/formatters'
-
-const SERVICE = 'ai'
 
 // Readable names for the backend's read-only tools, shown as "grounding" chips under each answer.
 const TOOL_LABELS = {
@@ -33,60 +28,30 @@ function toUiMessage(apiMessage) {
 export const aiService = {
   // One chat turn. Passing the conversation id keeps the server-side history (last 10 messages).
   async query(prompt, conversationId = null) {
-    return withMock(
-      () => {
-        const match = aiResponses.find((item) => item.match.test(prompt))
-        return {
-          id: generateId('ai'),
-          conversationId: conversationId || generateId('conv'),
-          prompt,
-          answer: match?.answer || defaultAiAnswer,
-          toolsUsed: [],
-        }
-      },
-      async () => {
-        const result = await api.post('/ai/chat', { message: prompt, conversation_id: conversationId })
-        return {
-          conversationId: result.conversation_id,
-          prompt,
-          answer: result.reply,
-          // Which tools the model called; an empty list means the answer used no account data.
-          toolsUsed: result.tools_used,
-        }
-      },
-      SERVICE,
-    )
+    const result = await api.post('/ai/chat', { message: prompt, conversation_id: conversationId })
+    return {
+      conversationId: result.conversation_id,
+      prompt,
+      answer: result.reply,
+      // Which tools the model called; an empty list means the answer used no account data.
+      toolsUsed: result.tools_used,
+    }
   },
 
   async listConversations() {
-    return withMock(
-      () => [],
-      async () =>
-        (await api.get('/ai/conversations')).map((row) => ({
-          id: row.id,
-          title: row.title,
-          updatedAt: row.updated_at,
-        })),
-      SERVICE,
-    )
+    return (await api.get('/ai/conversations')).map((row) => ({
+      id: row.id,
+      title: row.title,
+      updatedAt: row.updated_at,
+    }))
   },
 
   async getMessages(conversationId) {
-    return withMock(
-      () => [],
-      async () => (await api.get(`/ai/conversations/${conversationId}/messages`)).map(toUiMessage),
-      SERVICE,
-    )
+    return (await api.get(`/ai/conversations/${conversationId}/messages`)).map(toUiMessage)
   },
 
   async deleteConversation(conversationId) {
-    return withMock(
-      () => ({ id: conversationId }),
-      async () => {
-        await api.delete(`/ai/conversations/${conversationId}`)
-        return { id: conversationId }
-      },
-      SERVICE,
-    )
+    await api.delete(`/ai/conversations/${conversationId}`)
+    return { id: conversationId }
   },
 }

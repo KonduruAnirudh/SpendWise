@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
-import { formatAuth0Error } from '../../Auth/AuthGate'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { useAuth } from '../../context/AuthContext'
@@ -9,14 +8,13 @@ import { validateLogin } from '../../utils/validators'
 import { DEMO_CREDENTIALS } from '../../utils/constants'
 
 export function LoginPage() {
-  const { login, loginWithAuth0, isAuth0Enabled, authError } = useAuth()
+  const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [values, setValues] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [auth0Submitting, setAuth0Submitting] = useState(false)
   const [formError, setFormError] = useState('')
 
   async function handleSubmit(event) {
@@ -34,17 +32,6 @@ export function LoginPage() {
       setFormError(error.message || 'Invalid email or password')
     } finally {
       setSubmitting(false)
-    }
-  }
-
-  async function handleAuth0() {
-    setFormError('')
-    setAuth0Submitting(true)
-    try {
-      await loginWithAuth0(location.state?.from || '/dashboard')
-    } catch (error) {
-      setFormError(formatAuth0Error(error))
-      setAuth0Submitting(false)
     }
   }
 
@@ -80,30 +67,10 @@ export function LoginPage() {
             </button>
           }
         />
-        {(formError || authError) && (
-          <p className="text-sm text-danger">{formError || formatAuth0Error(authError)}</p>
-        )}
+        {formError && <p className="text-sm text-danger">{formError}</p>}
         <Button type="submit" className="w-full" loading={submitting}>
           Sign in
         </Button>
-        {isAuth0Enabled && (
-          <>
-            <div className="flex items-center gap-3 text-xs text-subtle">
-              <span className="h-px flex-1 bg-border" />
-              or
-              <span className="h-px flex-1 bg-border" />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              loading={auth0Submitting}
-              onClick={handleAuth0}
-            >
-              Continue with Auth0
-            </Button>
-          </>
-        )}
         <p className="text-center text-xs text-subtle">
           Demo: {DEMO_CREDENTIALS.email} / {DEMO_CREDENTIALS.password}
         </p>

@@ -5,7 +5,7 @@ import { Modal } from '../../../components/ui/Modal'
 import { useToast } from '../../../context/ToastContext'
 import { MemberForm } from './MemberForm'
 import { emptyMember, validateMember } from '../../../utils/validators'
-import { SelectedMembers } from './PeoplePicker'
+import { SelectedMembers } from './SelectedMembers'
 import { groupService } from '../../../services/groupService'
 
 export function CreateGroupModal({ open, onClose, onCreated }) {

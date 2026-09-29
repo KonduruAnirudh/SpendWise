@@ -1,18 +1,6 @@
 import { api, withQuery } from './api'
-import { withMock } from './mockStore'
 import { toUiTransaction, transactionService } from './transactionService'
 import { colorFor } from '../utils/palette'
-import {
-  summary,
-  monthlySeries,
-  categorySpending,
-  accountSpending,
-  insights,
-  reports,
-} from '../mock/analytics'
-import { transactions as mockTransactions } from '../mock/transactions'
-
-const SERVICE = 'analytics'
 
 // "YYYY-MM" for the user's local month, the format the dashboard endpoints take.
 export function currentMonthKey(date = new Date()) {
@@ -115,75 +103,48 @@ async function fetchTrends(monthKey, months) {
 
 export const analyticsService = {
   async getSummary(monthKey = currentMonthKey()) {
-    return withMock(
-      () => summary,
-      async () => toUiSummary(await fetchSummary(monthKey)),
-      SERVICE,
-    )
+    return toUiSummary(await fetchSummary(monthKey))
   },
 
   async getDashboard(monthKey = currentMonthKey()) {
-    return withMock(
-      () => ({
-        summary,
-        monthlySeries,
-        categorySpending,
-        recentTransactions: [...mockTransactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
-      }),
-      async () => {
-        const [apiSummary, trend] = await Promise.all([fetchSummary(monthKey), fetchTrends(monthKey, 8)])
-        return {
-          summary: toUiSummary(apiSummary),
-          monthlySeries: trend.map(toUiTrend),
-          categorySpending: apiSummary.spending_by_category.map(toUiCategorySpend),
-          recentTransactions: apiSummary.recent_transactions.map(toUiTransaction),
-        }
-      },
-      SERVICE,
-    )
+    const [apiSummary, trend] = await Promise.all([fetchSummary(monthKey), fetchTrends(monthKey, 8)])
+    return {
+      summary: toUiSummary(apiSummary),
+      monthlySeries: trend.map(toUiTrend),
+      categorySpending: apiSummary.spending_by_category.map(toUiCategorySpend),
+      recentTransactions: apiSummary.recent_transactions.map(toUiTransaction),
+    }
   },
 
   async getAnalytics(monthKey = currentMonthKey()) {
-    return withMock(
-      () => ({ monthlySeries, categorySpending, accountSpending, insights, summary }),
-      async () => {
-        const [apiSummary, trend, byAccount] = await Promise.all([
-          fetchSummary(monthKey),
-          fetchTrends(monthKey, 12),
-          accountSpendingFor(monthKey),
-        ])
-        const uiSummary = toUiSummary(apiSummary)
-        const categories = apiSummary.spending_by_category.map(toUiCategorySpend)
-        return {
-          summary: uiSummary,
-          monthlySeries: trend.map(toUiTrend),
-          categorySpending: categories,
-          accountSpending: byAccount,
-          insights: buildInsights(uiSummary, categories),
-        }
-      },
-      SERVICE,
-    )
+    const [apiSummary, trend, byAccount] = await Promise.all([
+      fetchSummary(monthKey),
+      fetchTrends(monthKey, 12),
+      accountSpendingFor(monthKey),
+    ])
+    const uiSummary = toUiSummary(apiSummary)
+    const categories = apiSummary.spending_by_category.map(toUiCategorySpend)
+    return {
+      summary: uiSummary,
+      monthlySeries: trend.map(toUiTrend),
+      categorySpending: categories,
+      accountSpending: byAccount,
+      insights: buildInsights(uiSummary, categories),
+    }
   },
 
   // One card per month with activity, newest first, over the last six months.
   async getReports(monthKey = currentMonthKey()) {
-    return withMock(
-      () => reports,
-      async () => {
-        const trend = await fetchTrends(monthKey, 6)
-        const active = trend.filter((point) => Number(point.income) > 0 || Number(point.expense) > 0).reverse()
-        const summaries = await Promise.all(active.map((point) => fetchSummary(point.month)))
-        return active.map((point, index) => ({
-          id: point.month,
-          month: monthLabel(point.month, 'long'),
-          income: Number(point.income),
-          expenses: Number(point.expense),
-          savings: Number(point.net),
-          topCategory: summaries[index].spending_by_category[0]?.category_name || '—',
-        }))
-      },
-      SERVICE,
-    )
+    const trend = await fetchTrends(monthKey, 6)
+    const active = trend.filter((point) => Number(point.income) > 0 || Number(point.expense) > 0).reverse()
+    const summaries = await Promise.all(active.map((point) => fetchSummary(point.month)))
+    return active.map((point, index) => ({
+      id: point.month,
+      month: monthLabel(point.month, 'long'),
+      income: Number(point.income),
+      expenses: Number(point.expense),
+      savings: Number(point.net),
+      topCategory: summaries[index].spending_by_category[0]?.category_name || '—',
+    }))
   },
 }

@@ -1,5 +1,4 @@
 import { BrowserRouter } from 'react-router-dom'
-import { AuthGate } from './Auth/AuthGate'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
@@ -11,9 +10,7 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <ToastProvider>
-            <AuthGate>
-              <AppRoutes />
-            </AuthGate>
+            <AppRoutes />
           </ToastProvider>
         </AuthProvider>
       </BrowserRouter>
