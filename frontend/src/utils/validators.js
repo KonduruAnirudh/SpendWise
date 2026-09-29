@@ -52,6 +52,16 @@ export function validatePerson(values) {
   return errors
 }
 
+export const emptyMember = { name: '', email: '' }
+
+// Group members: a registered user by email, or a guest by name.
+export function validateMember({ name, email }) {
+  const errors = {}
+  if (!name?.trim() && !email?.trim()) errors.name = 'Enter a name, an email, or both.'
+  if (email?.trim() && !isValidEmail(email)) errors.email = 'Please enter a valid email address.'
+  return errors
+}
+
 export function validateSharedExpense(values, splits) {
   const errors = {}
   if (values.splitMethod !== 'reimbursement' && !values.name?.trim()) errors.name = 'Expense name is required.'

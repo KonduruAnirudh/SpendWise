@@ -2,54 +2,57 @@ import { useState } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
-import { PersonForm } from './PersonForm'
-import { PeoplePicker, SelectedMembers } from './PeoplePicker'
-import { peopleService } from '../../../services/peopleService'
+import { useToast } from '../../../context/ToastContext'
+import { MemberForm } from './MemberForm'
+import { emptyMember, validateMember } from '../../../utils/validators'
+import { SelectedMembers } from './PeoplePicker'
 import { groupService } from '../../../services/groupService'
-import { validatePerson } from '../../../utils/validators'
-
-const emptyPerson = { name: '', email: '', phone: '' }
 
 export function CreateGroupModal({ open, onClose, onCreated }) {
+  const { push } = useToast()
   const [name, setName] = useState('')
+  // Staged locally as {id, name, email}; saved as group members after the group exists.
   const [members, setMembers] = useState([])
-  const [creatingPerson, setCreatingPerson] = useState(false)
-  const [person, setPerson] = useState(emptyPerson)
+  const [member, setMember] = useState(emptyMember)
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
 
   function reset() {
     setName('')
     setMembers([])
-    setCreatingPerson(false)
-    setPerson(emptyPerson)
+    setMember(emptyMember)
     setErrors({})
   }
 
-  async function savePerson() {
-    const nextErrors = validatePerson(person)
+  function stageMember() {
+    const nextErrors = validateMember(member)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
-    const created = await peopleService.create(person)
-    setMembers((current) => [...current, created])
-    setPerson(emptyPerson)
-    setCreatingPerson(false)
+    const label = member.name.trim() || member.email.trim()
+    setMembers((current) => [
+      ...current,
+      { id: `staged-${current.length}-${label}`, name: label, displayName: member.name.trim(), email: member.email.trim() },
+    ])
+    setMember(emptyMember)
   }
 
   async function create() {
     if (!name.trim()) {
-      setErrors({ name: 'Group name is required.' })
+      setErrors({ groupName: 'Group name is required.' })
       return
     }
     setSaving(true)
     try {
       const group = await groupService.create({
         name: name.trim(),
-        memberIds: members.map((member) => member.id),
+        members: members.map((item) => ({ name: item.displayName, email: item.email })),
       })
+      ;(group.failedMembers || []).forEach((failed) => push(`${failed.name} wasn't added: ${failed.message}`, 'error'))
       reset()
       onCreated(group)
       onClose()
+    } catch (error) {
+      push(error.message, 'error')
     } finally {
       setSaving(false)
     }
@@ -76,39 +79,20 @@ export function CreateGroupModal({ open, onClose, onCreated }) {
       }
     >
       <div className="space-y-5">
-        <Input label="Group name" value={name} onChange={(event) => setName(event.target.value)} error={errors.name} />
+        <Input label="Group name" value={name} onChange={(event) => setName(event.target.value)} error={errors.groupName} />
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted">Add members</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted">Members</p>
+          <p className="mb-2 text-xs text-subtle">You're added automatically as the group owner.</p>
           <SelectedMembers members={members} onRemove={(id) => setMembers((current) => current.filter((item) => item.id !== id))} />
         </div>
-        {creatingPerson ? (
-          <div className="rounded-xl border border-border p-3">
-            <PersonForm values={person} onChange={setPerson} errors={errors} />
-            <div className="mt-3 flex justify-end gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setCreatingPerson(false)}>
-                Cancel
-              </Button>
-              <Button size="sm" onClick={savePerson}>
-                Add person
-              </Button>
-            </div>
+        <div className="rounded-xl border border-border p-3">
+          <MemberForm values={member} onChange={setMember} errors={errors} />
+          <div className="mt-3 flex justify-end">
+            <Button size="sm" variant="outline" onClick={stageMember}>
+              Add to list
+            </Button>
           </div>
-        ) : (
-          <PeoplePicker
-            selectedIds={members.map((member) => member.id)}
-            onToggle={(personRow) =>
-              setMembers((current) =>
-                current.some((item) => item.id === personRow.id)
-                  ? current.filter((item) => item.id !== personRow.id)
-                  : [...current, personRow],
-              )
-            }
-            onCreate={() => {
-              setErrors({})
-              setCreatingPerson(true)
-            }}
-          />
-        )}
+        </div>
       </div>
     </Modal>
   )

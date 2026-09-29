@@ -6,12 +6,10 @@ import { ErrorState } from '../../components/ui/EmptyState'
 import { SkeletonCard } from '../../components/ui/Skeleton'
 import { GroupSettlements } from '../../features/expense-sharing/components/GroupSettlements'
 import { useAsync } from '../../hooks/useAsync'
-import { useToast } from '../../context/ToastContext'
 import { expenseService } from '../../services/expenseService'
 import { groupService } from '../../services/groupService'
 
 export function SettlementsPage() {
-  const { push } = useToast()
   const groups = useAsync(() => groupService.list(), [])
   const [groupId, setGroupId] = useState('')
   const selectedId = groupId || groups.data?.[0]?.id || ''
@@ -61,7 +59,6 @@ export function SettlementsPage() {
               balances={balances.data || []}
               settlements={settlements.data || []}
               onSettled={() => {
-                push('Settlement marked as completed.')
                 settlements.refetch()
                 balances.refetch()
               }}
