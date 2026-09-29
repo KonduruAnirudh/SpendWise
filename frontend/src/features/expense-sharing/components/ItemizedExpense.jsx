@@ -123,10 +123,22 @@ export function ItemizedExpense({ members, items, tax, tip, total, onItems, onTa
       </Button>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Input type="number" label="Tax" value={tax} onChange={(event) => onTax(Number(event.target.value) || 0)} />
-        <Input type="number" label="Tip" value={tip} onChange={(event) => onTip(Number(event.target.value) || 0)} />
+        <Input
+          type="number"
+          label="Tax"
+          hint="Split equally between all members."
+          value={tax}
+          onChange={(event) => onTax(Number(event.target.value) || 0)}
+        />
+        <Input
+          type="number"
+          label="Tip"
+          hint="Split equally between all members."
+          value={tip}
+          onChange={(event) => onTip(Number(event.target.value) || 0)}
+        />
       </div>
-      <p className="text-sm font-medium">Total {formatCurrency(total)}</p>
+      <p className="text-sm font-medium">Total {formatCurrency(total, 'INR', { fractionDigits: 2 })}</p>
       {errors.splits && <p className="text-xs text-danger">{errors.splits}</p>}
     </div>
   )

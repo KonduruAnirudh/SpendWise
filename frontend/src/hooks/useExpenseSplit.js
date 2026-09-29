@@ -6,7 +6,9 @@ import {
   calculateItemizedSplit,
   calculatePercentageSplit,
   calculateSharesSplit,
-  roundMoney,
+  fromPaise,
+  itemizedLines,
+  toPaise,
   validateSplit,
 } from '../utils/splitCalculations'
 import { generateId } from '../utils/formatters'
@@ -24,6 +26,10 @@ function equalPercents(members) {
 
 function defaultShares(members) {
   return Object.fromEntries(members.map((member) => [member.id, 1]))
+}
+
+function noExtras(members) {
+  return Object.fromEntries(members.map((member) => [member.id, 0]))
 }
 
 export function useExpenseSplit({ members = [], initialAmount = '', initialMethod = 'equal' } = {}) {
@@ -44,19 +50,23 @@ export function useExpenseSplit({ members = [], initialAmount = '', initialMetho
   useEffect(() => {
     const total = Number(amount) || 0
     setExactAmounts(equalRecord(members, total))
-    setAdjusted(equalRecord(members, total))
     // members is derived from memberKey
   }, [memberKey, amount])
+
+  useEffect(() => {
+    // Adjustments are extras on top of an equal split, so they start at zero.
+    setAdjusted(noExtras(members))
+  }, [memberKey])
 
   useEffect(() => {
     setPercents((current) => ({ ...equalPercents(members), ...current }))
     setShares((current) => ({ ...defaultShares(members), ...current }))
   }, [memberKey])
 
-  const itemizedTotal = useMemo(() => {
-    const subtotal = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
-    return roundMoney(subtotal + Number(tax || 0) + Number(tip || 0))
-  }, [items, tax, tip])
+  const itemizedTotal = useMemo(
+    () => fromPaise(itemizedLines(members, items, tax, tip).reduce((sum, line) => sum + toPaise(line.amount), 0)),
+    [members, items, tax, tip],
+  )
 
   const total = method === 'itemized' ? itemizedTotal : Number(amount) || 0
 
@@ -68,13 +78,17 @@ export function useExpenseSplit({ members = [], initialAmount = '', initialMetho
     if (method === 'adjustment') return calculateAdjustedSplit(members, adjusted, total).splits
     if (method === 'itemized') return calculateItemizedSplit(members, items, tax, tip)
     if (method === 'reimbursement') {
-      const receiver = members.find((member) => member.id === receivedBy)
+      const receiver = members.find((member) => String(member.id) === String(receivedBy))
       return receiver ? [{ personId: receiver.id, memberId: receiver.id, name: receiver.name, amount: total }] : []
     }
     return []
   }, [method, members, total, exactAmounts, percents, shares, adjusted, items, tax, tip, receivedBy])
 
-  const remaining = roundMoney(total) - splits.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+  // For adjustments, "remaining" is the pool split equally after the extras are taken off.
+  const remaining =
+    method === 'adjustment'
+      ? calculateAdjustedSplit(members, adjusted, total).remaining
+      : fromPaise(toPaise(total) - splits.reduce((sum, row) => sum + toPaise(row.amount), 0))
 
   const errors = useMemo(
     () =>
@@ -85,10 +99,12 @@ export function useExpenseSplit({ members = [], initialAmount = '', initialMetho
         splits,
         percentsById: percents,
         sharesById: shares,
+        extrasById: adjusted,
+        items,
         paidBy,
         receivedBy,
       }),
-    [method, members, total, splits, percents, shares, paidBy, receivedBy],
+    [method, members, total, splits, percents, shares, adjusted, items, paidBy, receivedBy],
   )
 
   function applyBill(bill) {
@@ -140,7 +156,7 @@ export function useExpenseSplit({ members = [], initialAmount = '', initialMetho
     errors,
     applyBill,
     resetEqualAdjustments() {
-      setAdjusted(equalRecord(members, Number(amount) || 0))
+      setAdjusted(noExtras(members))
     },
   }
 }
