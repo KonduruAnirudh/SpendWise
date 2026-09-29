@@ -12,12 +12,13 @@ export const DEMO_CREDENTIALS = {
   password: 'SpendWise123',
 }
 
+// Matches the backend AccountType enum, so every saved type round-trips through the edit form.
 export const ACCOUNT_TYPES = [
   { value: 'bank', label: 'Bank' },
+  { value: 'savings', label: 'Savings' },
   { value: 'credit_card', label: 'Credit Card' },
   { value: 'cash', label: 'Cash' },
-  { value: 'upi', label: 'UPI' },
-  { value: 'other', label: 'Other' },
+  { value: 'wallet', label: 'Wallet / UPI' },
 ]
 
 export const PAYMENT_MODES = [

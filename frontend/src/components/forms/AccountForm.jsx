@@ -21,11 +21,9 @@ export function AccountForm({ values, onChange, errors }) {
         value={values.balance}
         onChange={(event) => set('balance', event.target.value)}
         error={errors.balance}
-      />
-      <Input
-        label="Institution"
-        value={values.institution || ''}
-        onChange={(event) => set('institution', event.target.value)}
+        // An existing account's balance is derived from its transactions, so it is read-only.
+        disabled={Boolean(values.id)}
+        hint={values.id ? 'Calculated from the opening balance and transactions.' : undefined}
       />
     </div>
   )

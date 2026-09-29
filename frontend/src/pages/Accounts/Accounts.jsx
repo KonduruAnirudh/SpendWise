@@ -35,12 +35,18 @@ export function AccountsPage() {
     const nextErrors = validateAccount(payload)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
-    if (editing === 'new') {
-      await accountService.create(payload)
-      push('Account added.')
-    } else {
-      await accountService.update(editing.id, payload)
-      push('Account updated.')
+    try {
+      if (editing === 'new') {
+        await accountService.create(payload)
+        push('Account added.')
+      } else {
+        await accountService.update(editing.id, payload)
+        push('Account updated.')
+      }
+    } catch (error) {
+      // Keep the modal open so the values can be corrected.
+      push(error.message, 'error')
+      return
     }
     setEditing(null)
     accounts.refetch()
@@ -103,11 +109,15 @@ export function AccountsPage() {
         open={Boolean(deleting)}
         onClose={() => setDeleting(null)}
         title="Delete account"
-        description={`Remove ${deleting?.name}? Transactions will remain until you reassign them.`}
+        description={`Remove ${deleting?.name}? An account that still has transactions can't be deleted.`}
         confirmLabel="Delete"
         onConfirm={async () => {
-          await accountService.remove(deleting.id)
-          push('Account deleted.')
+          try {
+            await accountService.remove(deleting.id)
+            push('Account deleted.')
+          } catch (error) {
+            push(error.message, 'error')
+          }
           setDeleting(null)
           accounts.refetch()
         }}

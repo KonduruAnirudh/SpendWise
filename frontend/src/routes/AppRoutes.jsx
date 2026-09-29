@@ -1,6 +1,5 @@
 import { lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { hasAuth0CallbackParams } from '../Auth/Auth0Provider'
 import { AuthLayout } from '../layouts/AuthLayout'
 import { DashboardLayout } from '../layouts/DashboardLayout'
 import { GuestRoute, ProtectedRoute } from './ProtectedRoute'
@@ -48,8 +47,6 @@ const SettingsPage = lazy(() =>
 )
 
 export function AppRoutes() {
-  const waitingForAuth0 = hasAuth0CallbackParams()
-
   return (
     <Routes>
         <Route element={<GuestRoute />}>
@@ -81,18 +78,7 @@ export function AppRoutes() {
           </Route>
         </Route>
 
-        <Route
-          path="/"
-          element={
-            waitingForAuth0 ? (
-              <div className="flex min-h-svh items-center justify-center bg-bg text-sm text-muted">
-                Completing sign-in…
-              </div>
-            ) : (
-              <Navigate to="/dashboard" replace />
-            )
-          }
-        />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
   )
