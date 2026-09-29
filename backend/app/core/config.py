@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -19,7 +20,8 @@ class Settings(BaseSettings):
     database_url: str
     test_database_url: str
 
-    secret_key: str
+    # HS256 needs at least a 256-bit key (RFC 7518 §3.2); a short key makes JWTs brute-forceable.
+    secret_key: str = Field(min_length=32)
     access_token_expire_minutes: int = 60
 
     llm_base_url: str
