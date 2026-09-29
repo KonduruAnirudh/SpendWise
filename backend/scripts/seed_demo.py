@@ -2,13 +2,18 @@
 
 Run from backend/:  python -m scripts.seed_demo
 
+The password comes from the DEMO_PASSWORD environment variable; if it isn't set, a random one is
+generated. Either way the login is printed at the end. No credential is stored in the repository.
+
 Everything goes through the service layer, so the demo data obeys the same rules as the API:
 transaction types are derived from categories, splits are validated and computed in paise, and
 group membership is checked. Re-running replaces the previous demo data and touches no other user.
 Amounts come from a fixed random seed, and dates are relative to today, so the demo always looks current.
 """
 
+import os
 import random
+import secrets
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -38,13 +43,14 @@ from app.services import (
     transaction_service,
 )
 
-# Shown on the login page (frontend/src/utils/constants.js). Demo-only credentials.
-DEMO_EMAIL = "demo@spendwise.com"
-DEMO_PASSWORD = "SpendWise123"
+# example.com is reserved for documentation and examples (RFC 2606), so these can never be real inboxes.
+DEMO_EMAIL = "demo@example.com"
 DEMO_NAME = "Demo User"
 # A second registered user, so the demo shows both kinds of group member (registered and guest).
-FRIEND_EMAIL = "priya.demo@spendwise.com"
+FRIEND_EMAIL = "priya.demo@example.com"
 FRIEND_NAME = "Priya"
+# The API's minimum password length (UserCreate).
+MIN_PASSWORD_LENGTH = 8
 
 MONTHS = 6
 
@@ -198,13 +204,13 @@ def seed_flatmates(ctx: Context) -> None:
             )
 
 
-def seed_demo(db: Session, today: date | None = None) -> dict:
+def seed_demo(db: Session, password: str, today: date | None = None) -> dict:
     today = today or date.today()
     remove_user(db, DEMO_EMAIL)
     remove_user(db, FRIEND_EMAIL)
 
-    user = auth_service.register_user(db, UserCreate(email=DEMO_EMAIL, password=DEMO_PASSWORD, full_name=DEMO_NAME))
-    auth_service.register_user(db, UserCreate(email=FRIEND_EMAIL, password=DEMO_PASSWORD, full_name=FRIEND_NAME))
+    user = auth_service.register_user(db, UserCreate(email=DEMO_EMAIL, password=password, full_name=DEMO_NAME))
+    auth_service.register_user(db, UserCreate(email=FRIEND_EMAIL, password=password, full_name=FRIEND_NAME))
 
     accounts = {}
     for name, account_type, opening in (
@@ -225,13 +231,26 @@ def seed_demo(db: Session, today: date | None = None) -> dict:
     return {"user_id": user.id, "accounts": len(accounts), "transactions": ctx.transactions, "groups": 2}
 
 
+def demo_password() -> str:
+    """DEMO_PASSWORD if set (checked before touching the database), otherwise a random password."""
+    password = os.environ.get("DEMO_PASSWORD")
+    if password is None:
+        return secrets.token_urlsafe(12)
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise SystemExit(f"DEMO_PASSWORD must be at least {MIN_PASSWORD_LENGTH} characters.")
+    return password
+
+
 def main() -> None:
+    password = demo_password()
     with SessionLocal() as db:
-        summary = seed_demo(db)
+        summary = seed_demo(db, password)
     print(
         f"Demo data ready: {summary['accounts']} accounts, {summary['transactions']} transactions, "
-        f"{summary['groups']} groups.\nLog in as {DEMO_EMAIL} / {DEMO_PASSWORD} "
-        f"(second registered member: {FRIEND_EMAIL}, same password)."
+        f"{summary['groups']} groups.\n"
+        f"Log in as:  {DEMO_EMAIL}\n"
+        f"Password:   {password}\n"
+        f"(Second registered member: {FRIEND_EMAIL}, same password. Set DEMO_PASSWORD to choose it.)"
     )
 
 

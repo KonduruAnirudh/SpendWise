@@ -6,11 +6,6 @@ export const AUTH_STORAGE_KEY = 'spendwise.auth'
 export const THEME_STORAGE_KEY = 'spendwise.theme'
 export const PREFERENCES_STORAGE_KEY = 'spendwise.preferences'
 
-export const DEMO_CREDENTIALS = {
-  email: 'demo@spendwise.com',
-  password: 'SpendWise123',
-}
-
 // Matches the backend AccountType enum, so every saved type round-trips through the edit form.
 export const ACCOUNT_TYPES = [
   { value: 'bank', label: 'Bank' },

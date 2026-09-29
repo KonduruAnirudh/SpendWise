@@ -32,4 +32,4 @@ React → /api/v1/... → Vite proxy → FastAPI :8000
 | `npm run lint` | Lint with oxlint |
 | `npm run preview` | Preview the production build |
 
-Demo login (after running `python -m scripts.seed_demo` in `backend/`): **demo@spendwise.com / SpendWise123**.
+Demo login: run `python -m scripts.seed_demo` in `backend/`. It prints the login when it finishes.

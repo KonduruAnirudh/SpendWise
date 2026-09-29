@@ -118,7 +118,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env                      # then set SECRET_KEY (see below)
 python -m alembic upgrade head
-python -m scripts.seed_demo               # optional: demo user with six months of data
+python -m scripts.seed_demo               # optional: demo data; prints the demo login
 python -m uvicorn app.main:app --reload   # http://localhost:8000
 ```
 
@@ -145,7 +145,14 @@ In development, Vite proxies `/api/*` to the backend, so the browser talks to on
 
 ### Demo login
 
-After `python -m scripts.seed_demo`: **demo@spendwise.com / SpendWise123**. The script also creates a second registered user (`priya.demo@spendwise.com`, same password), a "Goa Trip" group that uses all seven split methods, and a "Flatmates" group. Re-running it replaces only the demo users' data.
+Run the seed script; it prints the login when it finishes. The password is taken from the `DEMO_PASSWORD` environment variable if you set one (at least 8 characters), otherwise it's generated randomly on each run. No credentials are stored in the repository.
+
+```bash
+python -m scripts.seed_demo                              # random password, printed at the end
+DEMO_PASSWORD='choose-your-own' python -m scripts.seed_demo
+```
+
+The script creates a demo user and a second registered user (both on the reserved `example.com` domain), a "Goa Trip" group that uses all seven split methods, and a "Flatmates" group. Re-running it replaces only the demo users' data.
 
 ---
 
@@ -163,6 +170,7 @@ After `python -m scripts.seed_demo`: **demo@spendwise.com / SpendWise123**. The 
 | `LLM_API_KEY` | `ollama` | Ollama ignores it; hosted providers need a real key |
 | `LLM_MODEL` | `qwen3:8b` | model name |
 | `CORS_ORIGINS` | `http://localhost:5173` | comma-separated allowed origins |
+| `DEMO_PASSWORD` | *(optional)* | used only by `scripts/seed_demo.py`; if unset, a random password is generated and printed |
 
 Settings are loaded with pydantic-settings and validated at startup, so a missing variable fails immediately rather than at the first request.
 

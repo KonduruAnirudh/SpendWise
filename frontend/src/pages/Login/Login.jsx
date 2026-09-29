@@ -5,7 +5,6 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { useAuth } from '../../context/AuthContext'
 import { validateLogin } from '../../utils/validators'
-import { DEMO_CREDENTIALS } from '../../utils/constants'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -71,9 +70,6 @@ export function LoginPage() {
         <Button type="submit" className="w-full" loading={submitting}>
           Sign in
         </Button>
-        <p className="text-center text-xs text-subtle">
-          Demo: {DEMO_CREDENTIALS.email} / {DEMO_CREDENTIALS.password}
-        </p>
       </form>
       <p className="mt-6 text-center text-sm text-muted">
         Don&apos;t have an account?{' '}
