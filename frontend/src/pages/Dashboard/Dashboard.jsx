@@ -109,9 +109,6 @@ export function DashboardPage() {
             <Button size="sm" variant="outline" onClick={() => navigate('/groups')}>
               + Add expense
             </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate('/sharing')}>
-              Upload bill
-            </Button>
             <Link to="/groups" className="inline-flex items-center text-sm font-medium text-accent hover:underline">
               View groups →
             </Link>

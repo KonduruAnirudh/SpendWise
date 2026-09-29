@@ -10,8 +10,8 @@ import { useToast } from '../../context/ToastContext'
 import { useAsync } from '../../hooks/useAsync'
 import { accountService } from '../../services/accountService'
 import { categoryService } from '../../services/categoryService'
-import { authService } from '../../services/authService'
-import { CURRENCIES, DATE_FORMATS, INCOME_TRACKING_OPTIONS } from '../../utils/constants'
+import { Badge } from '../../components/ui/Badge'
+import { DATE_FORMATS, INCOME_TRACKING_OPTIONS } from '../../utils/constants'
 
 export function SettingsPage() {
   const { user, updateUser, logout } = useAuth()
@@ -20,27 +20,26 @@ export function SettingsPage() {
   const accounts = useAsync(() => accountService.list(), [])
   const categories = useAsync(() => categoryService.list(), [])
   const [prefs, setPrefs] = useState({
-    currency: user?.currency || 'INR',
     dateFormat: user?.dateFormat || 'dd MMM',
     defaultAccountId: user?.defaultAccountId || '',
     defaultCategoryId: user?.defaultCategoryId || '',
     incomeTracking: user?.incomeTracking || '',
     monthlyBudget: user?.monthlyBudget || '',
   })
-  const [passwords, setPasswords] = useState({ current: '', next: '' })
 
   return (
     <div>
       <PageHeader eyebrow="Account" title="Settings" description="Preferences, appearance, and security." />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader title="Preferences" />
+          <CardHeader title="Preferences" description="Saved in this browser." />
           <div className="space-y-4">
-            <Select value={prefs.currency} onChange={(event) => setPrefs({ ...prefs, currency: event.target.value })} label="Currency">
-              {CURRENCIES.map((currency) => (
-                <option key={currency}>{currency}</option>
-              ))}
-            </Select>
+            <Input
+              label="Currency"
+              value={user?.currency || 'INR'}
+              disabled
+              hint="Set when your account was created. Changing it isn't available yet."
+            />
             <Select value={prefs.dateFormat} onChange={(event) => setPrefs({ ...prefs, dateFormat: event.target.value })} label="Date format">
               {DATE_FORMATS.map((item) => (
                 <option key={item.value} value={item.value}>
@@ -53,6 +52,7 @@ export function SettingsPage() {
               value={prefs.defaultAccountId}
               onChange={(event) => setPrefs({ ...prefs, defaultAccountId: event.target.value })}
             >
+              <option value="">None</option>
               {(accounts.data || []).map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name}
@@ -64,6 +64,7 @@ export function SettingsPage() {
               value={prefs.defaultCategoryId}
               onChange={(event) => setPrefs({ ...prefs, defaultCategoryId: event.target.value })}
             >
+              <option value="">None</option>
               {(categories.data || []).map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -122,44 +123,14 @@ export function SettingsPage() {
         <Card>
           <CardHeader title="Security" />
           <div className="space-y-4">
-            {user?.authProvider === 'auth0' ? (
-              <p className="text-sm text-muted">
-                Password and identity are managed in Auth0 for this account.
-              </p>
-            ) : (
-              <>
-                <Input
-                  label="Current password"
-                  type="password"
-                  value={passwords.current}
-                  onChange={(event) => setPasswords({ ...passwords, current: event.target.value })}
-                />
-                <Input
-                  label="New password"
-                  type="password"
-                  value={passwords.next}
-                  onChange={(event) => setPasswords({ ...passwords, next: event.target.value })}
-                />
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    if (!passwords.current || !passwords.next) {
-                      push('Enter your current and new password.', 'error')
-                      return
-                    }
-                    try {
-                      await authService.changePassword(passwords.current, passwords.next)
-                      push('Password updated.')
-                      setPasswords({ current: '', next: '' })
-                    } catch (error) {
-                      push(error.message, 'error')
-                    }
-                  }}
-                >
-                  Change password
-                </Button>
-              </>
-            )}
+            <div className="space-y-3">
+              <Input label="Current password" type="password" value="" disabled />
+              <Input label="New password" type="password" value="" disabled />
+              <div className="flex items-center gap-2 text-sm text-muted">
+                <Badge tone="accent">Coming soon</Badge>
+                Changing your password isn't available yet.
+              </div>
+            </div>
             <div className="rounded-xl border border-border p-3 text-sm">
               <p className="font-medium">Sessions</p>
               <p className="mt-1 text-muted">This browser · Active now</p>

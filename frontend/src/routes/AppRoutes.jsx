@@ -5,8 +5,11 @@ import { DashboardLayout } from '../layouts/DashboardLayout'
 import { GuestRoute, ProtectedRoute } from './ProtectedRoute'
 
 const LoginPage = lazy(() => import('../pages/Login/Login').then((m) => ({ default: m.LoginPage })))
-const ForgotPasswordPage = lazy(() =>
-  import('../pages/Login/ForgotPassword').then((m) => ({ default: m.ForgotPasswordPage })),
+const ComingSoonPage = lazy(() =>
+  import('../pages/ComingSoon/ComingSoon').then((m) => ({ default: m.ComingSoonPage })),
+)
+const AuthComingSoon = lazy(() =>
+  import('../pages/ComingSoon/ComingSoon').then((m) => ({ default: m.AuthComingSoon })),
 )
 const SignupPage = lazy(() => import('../pages/Signup/Signup').then((m) => ({ default: m.SignupPage })))
 const DashboardPage = lazy(() =>
@@ -21,7 +24,6 @@ const AccountsPage = lazy(() =>
 const CategoriesPage = lazy(() =>
   import('../pages/Categories/Categories').then((m) => ({ default: m.CategoriesPage })),
 )
-const ImportPage = lazy(() => import('../pages/Import/Import').then((m) => ({ default: m.ImportPage })))
 const AnalyticsPage = lazy(() =>
   import('../pages/Analytics/Analytics').then((m) => ({ default: m.AnalyticsPage })),
 )
@@ -33,7 +35,6 @@ const GroupDetailsPage = lazy(() =>
 const SharingOverviewPage = lazy(() =>
   import('../pages/Sharing/SharingOverview').then((m) => ({ default: m.SharingOverviewPage })),
 )
-const PeoplePage = lazy(() => import('../pages/People/People').then((m) => ({ default: m.PeoplePage })))
 const SharedExpensesPage = lazy(() =>
   import('../pages/SharedExpenses/SharedExpenses').then((m) => ({ default: m.SharedExpensesPage })),
 )
@@ -53,7 +54,10 @@ export function AppRoutes() {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route
+              path="/forgot-password"
+              element={<AuthComingSoon description="Password reset by email isn't available yet." />}
+            />
           </Route>
         </Route>
 
@@ -63,13 +67,35 @@ export function AppRoutes() {
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
-            <Route path="/import" element={<ImportPage />} />
+            <Route
+              path="/import"
+              element={
+                <ComingSoonPage
+                  title="Import statements"
+                  description="Importing bank statements (CSV or PDF) isn't available yet."
+                  alternative="For now, add transactions one at a time."
+                  to="/transactions"
+                  linkLabel="Go to Transactions"
+                />
+              }
+            />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/groups" element={<GroupsPage />} />
             <Route path="/groups/:groupId" element={<GroupDetailsPage />} />
             <Route path="/sharing" element={<SharingOverviewPage />} />
-            <Route path="/people" element={<PeoplePage />} />
+            <Route
+              path="/people"
+              element={
+                <ComingSoonPage
+                  title="People"
+                  description="A shared contacts directory isn't available yet."
+                  alternative="Add people directly to a group: registered users by email, anyone else as a guest by name."
+                  to="/groups"
+                  linkLabel="Go to Groups"
+                />
+              }
+            />
             <Route path="/shared-expenses" element={<SharedExpensesPage />} />
             <Route path="/settlements" element={<SettlementsPage />} />
             <Route path="/ai" element={<AIPage />} />

@@ -4,7 +4,6 @@ import {
   ArrowLeftRight,
   Wallet,
   Shapes,
-  Upload,
   PieChart,
   Newspaper,
   Users,
@@ -17,7 +16,6 @@ import {
   Moon,
   Monitor,
   LayoutGrid,
-  Contact,
 } from 'lucide-react'
 import { Logo } from '../ui/Logo'
 import { Avatar } from '../ui/Avatar'
@@ -36,7 +34,6 @@ const NAV = [
       { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
       { to: '/accounts', label: 'Accounts', icon: Wallet },
       { to: '/categories', label: 'Categories', icon: Shapes },
-      { to: '/import', label: 'Import Statements', icon: Upload },
     ],
   },
   {
@@ -52,7 +49,6 @@ const NAV = [
     items: [
       { to: '/sharing', label: 'Overview', icon: LayoutGrid },
       { to: '/groups', label: 'Groups', icon: Users },
-      { to: '/people', label: 'People', icon: Contact },
       { to: '/shared-expenses', label: 'Shared Expenses', icon: Split },
       { to: '/settlements', label: 'Settlements', icon: CircleCheck },
     ],

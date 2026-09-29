@@ -12,7 +12,7 @@ export function LoginPage() {
   const { login, loginWithAuth0, isAuth0Enabled, authError } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [values, setValues] = useState({ email: '', password: '', remember: true })
+  const [values, setValues] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -80,19 +80,6 @@ export function LoginPage() {
             </button>
           }
         />
-        <div className="flex items-center justify-between text-sm">
-          <label className="flex items-center gap-2 text-muted">
-            <input
-              type="checkbox"
-              checked={values.remember}
-              onChange={(event) => setValues({ ...values, remember: event.target.checked })}
-            />
-            Remember me
-          </label>
-          <Link to="/forgot-password" className="text-accent hover:underline">
-            Forgot password
-          </Link>
-        </div>
         {(formError || authError) && (
           <p className="text-sm text-danger">{formError || formatAuth0Error(authError)}</p>
         )}

@@ -12,11 +12,9 @@ import { SkeletonCard } from '../../components/ui/Skeleton'
 import { ExpenseComposer } from '../../features/expense-sharing/components/ExpenseComposer'
 import { SelectedMembers } from '../../features/expense-sharing/components/PeoplePicker'
 import { MemberForm } from '../../features/expense-sharing/components/MemberForm'
-import { BillUploadFlow } from '../../features/expense-sharing/components/BillUploadFlow'
 import { GroupSettlements } from '../../features/expense-sharing/components/GroupSettlements'
 import { useAsync } from '../../hooks/useAsync'
 import { useExpenseSplit } from '../../hooks/useExpenseSplit'
-import { useBillUpload } from '../../hooks/useBillUpload'
 import { useToast } from '../../context/ToastContext'
 import { groupService } from '../../services/groupService'
 import { expenseService } from '../../services/expenseService'
@@ -35,7 +33,6 @@ export function GroupDetailsPage() {
   const balances = useAsync(() => expenseService.getBalances(groupId), [groupId])
   const settlements = useAsync(() => expenseService.listSettlements(groupId), [groupId])
   const [expenseOpen, setExpenseOpen] = useState(false)
-  const [billOpen, setBillOpen] = useState(false)
   const [memberOpen, setMemberOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -51,7 +48,6 @@ export function GroupDetailsPage() {
 
   const members = group.data?.members || EMPTY_MEMBERS
   const split = useExpenseSplit({ members })
-  const billFlow = useBillUpload()
 
   const peopleById = useMemo(
     () => Object.fromEntries(members.map((member) => [member.id, member])),
@@ -130,8 +126,6 @@ export function GroupDetailsPage() {
       setSaving(false)
     }
     setExpenseOpen(false)
-    billFlow.reset()
-    setBillOpen(false)
     refreshGroup()
   }
 
@@ -192,9 +186,6 @@ export function GroupDetailsPage() {
         description={`${members.length} members`}
         actions={
           <>
-            <Button variant="outline" onClick={() => setBillOpen(true)}>
-              Upload bill
-            </Button>
             <Button variant="outline" onClick={() => setMemberOpen(true)}>
               Manage members
             </Button>
@@ -284,48 +275,6 @@ export function GroupDetailsPage() {
         }
       >
         <ExpenseComposer members={members} split={split} values={form} onValues={setForm} errors={errors} />
-      </Modal>
-
-      <Modal
-        open={billOpen}
-        onClose={() => {
-          billFlow.reset()
-          setBillOpen(false)
-        }}
-        title="Upload bill"
-        className="sm:max-w-2xl"
-        footer={
-          billFlow.status === 'split' ? (
-            <>
-              <Button variant="ghost" onClick={() => billFlow.reset()}>
-                Back
-              </Button>
-              <Button onClick={saveExpense} loading={saving}>
-                Confirm split
-              </Button>
-            </>
-          ) : null
-        }
-      >
-        {billFlow.status !== 'split' && (
-          <BillUploadFlow
-            flow={billFlow}
-            onContinue={() => {
-              const bill = billFlow.confirmReview()
-              split.applyBill(bill)
-              split.setMethod('itemized')
-              setForm((current) => ({ ...current, name: bill.merchant || current.name || 'Bill' }))
-            }}
-          />
-        )}
-        {billFlow.status === 'split' && (
-          <div className="space-y-4">
-            <p className="text-sm text-muted">
-              How would you like to split this bill of {formatCurrency(billFlow.bill?.total || 0)}?
-            </p>
-            <ExpenseComposer members={members} split={split} values={form} onValues={setForm} errors={errors} />
-          </div>
-        )}
       </Modal>
 
       <Modal
