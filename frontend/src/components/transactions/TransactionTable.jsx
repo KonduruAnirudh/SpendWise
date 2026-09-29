@@ -9,7 +9,7 @@ export function TransactionTable({ rows, lookup, onEdit, onDelete, dateFormat })
         <table className="w-full text-left text-sm">
           <thead className="bg-hover text-xs uppercase tracking-[0.12em] text-muted">
             <tr>
-              {['Date', 'Description', 'Category', 'Account', 'Payment Mode', 'Type', 'Amount', ''].map((col) => (
+              {['Date', 'Description', 'Category', 'Account', 'Type', 'Amount', ''].map((col) => (
                 <th key={col} className="px-4 py-3 font-medium">
                   {col}
                 </th>
@@ -23,7 +23,6 @@ export function TransactionTable({ rows, lookup, onEdit, onDelete, dateFormat })
                 <td className="px-4 py-3 font-medium">{row.description}</td>
                 <td className="px-4 py-3 text-muted">{lookup.category(row.categoryId)}</td>
                 <td className="px-4 py-3 text-muted">{lookup.account(row.accountId)}</td>
-                <td className="px-4 py-3 text-muted">{row.paymentMode}</td>
                 <td className="px-4 py-3">
                   <Badge tone={row.type === 'income' ? 'success' : 'danger'}>{row.type}</Badge>
                 </td>
@@ -55,7 +54,7 @@ export function TransactionTable({ rows, lookup, onEdit, onDelete, dateFormat })
             </div>
             <div className="mt-3 flex items-center justify-between">
               <p className="text-xs text-subtle">
-                {lookup.account(row.accountId)} · {row.paymentMode}
+                {lookup.account(row.accountId)}
               </p>
               <RowActions onEdit={() => onEdit(row)} onDelete={() => onDelete(row)} />
             </div>

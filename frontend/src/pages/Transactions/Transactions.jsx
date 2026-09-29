@@ -83,20 +83,30 @@ export function TransactionsPage() {
     const nextErrors = validateTransaction(payload)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
-    if (editing === 'new') {
-      await transactionService.create(payload)
-      push('Transaction added successfully.')
-    } else {
-      await transactionService.update(editing.id, payload)
-      push('Transaction updated.')
+    try {
+      if (editing === 'new') {
+        await transactionService.create(payload)
+        push('Transaction added successfully.')
+      } else {
+        await transactionService.update(editing.id, payload)
+        push('Transaction updated.')
+      }
+    } catch (error) {
+      // Keep the modal open so the values can be corrected.
+      push(error.message, 'error')
+      return
     }
     setEditing(null)
     list.refetch()
   }
 
   async function confirmDelete() {
-    await transactionService.remove(deleting.id)
-    push('Transaction deleted.')
+    try {
+      await transactionService.remove(deleting.id)
+      push('Transaction deleted.')
+    } catch (error) {
+      push(error.message, 'error')
+    }
     setDeleting(null)
     list.refetch()
   }
