@@ -9,6 +9,7 @@ from app.repositories import category_repository
 from app.schemas.category import CategoryCreate
 
 DUPLICATE_NAME = "A category with this name already exists"
+CATEGORY_IN_USE = "This category is used by transactions and cannot be deleted."
 
 
 def list_categories(db: Session, user: User, category_type: CategoryType | None = None) -> list[Category]:
@@ -43,4 +44,8 @@ def delete_category(db: Session, user: User, category_id: int) -> None:
     if category.is_system:
         raise ForbiddenError("System categories cannot be deleted")
     category_repository.delete(db, category)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ConflictError(CATEGORY_IN_USE)

@@ -27,4 +27,5 @@ class AccountResponse(BaseModel):
     type: AccountType
     currency: str
     opening_balance: Decimal
+    current_balance: Decimal
     created_at: datetime
