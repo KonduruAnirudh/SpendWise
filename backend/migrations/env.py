@@ -15,9 +15,13 @@ import app.models  # noqa: F401  (registers all models on Base.metadata)
 
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
+# A caller (e.g. tests/test_migrations.py) may pass its own connection; then Alembic runs
+# on that connection and leaves the application's logging configuration alone.
+provided_connection = config.attributes.get("connection")
+
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if config.config_file_name is not None:
+if config.config_file_name is not None and provided_connection is None:
     fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
@@ -62,6 +66,12 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    if provided_connection is not None:
+        context.configure(connection=provided_connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
