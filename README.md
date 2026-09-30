@@ -4,6 +4,8 @@
 
 A full-stack portfolio project: FastAPI + PostgreSQL on the backend, React on the frontend, and a local LLM (Ollama) for the assistant. The backend is covered by 160+ automated tests, and CI runs them against a real PostgreSQL on every push.
 
+The reasoning behind the main trade-offs is in [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md).
+
 ---
 
 ## 1. Overview
@@ -80,7 +82,7 @@ backend/
       settlement_engine.py   pure greedy debt simplification
     ai/                LLM provider, tools, prompts, chat service
   migrations/          Alembic
-  scripts/seed_demo.py demo data
+  scripts/              demo data seed; bill-reader evaluation (eval_bills, make_test_receipts)
   tests/               API tests, unit tests, migration test
 frontend/
   src/
@@ -284,7 +286,16 @@ photo/PDF ─► size check (5 MB → 413) ─► real type from magic bytes (JP
   | `qwen3.5:9b` (thinking by default) | 38/38 | ~131 s |
   | **`qwen3-vl:8b-instruct`** | **38/38** | **~18 s** |
 
-  Thinking can't be switched off through the OpenAI-compatible API (`reasoning_effort` and `think` were tried), so the non-thinking instruct variant is used. The test receipts are synthetic; accuracy on real, crumpled, badly lit receipts will be lower, which is why every draft is reviewed by a person.
+  Thinking can't be switched off through the OpenAI-compatible API (`reasoning_effort` and `think` were tried), so the non-thinking instruct variant is used.
+- **Real receipts:** the chosen model was then run on two real photos, a crumpled 2015 restaurant bill (8 items, two VAT rates, Service Tax and a service charge) and a Creative Commons (CC0) photo of a 2026 bill held in a hand. It first scored **23/25** fields: every amount was read correctly, but "Service Tax" was filed as a service charge. After one line in the prompt ("Service Tax is a government tax despite its name") it scored **25/25**, the synthetic set still scored 38/38, and a repeat run was identical. Two receipts are a small sample (and the fix was made after seeing that failure), so real-world accuracy will be lower on crumpled or badly lit bills. That's why every draft is reviewed by a person, and why tax and service are combined into one line in the form: even this misclassification wouldn't have changed anyone's share.
+- **Evaluate changes** to the prompt or model with the same harness:
+
+  ```bash
+  python -m scripts.make_test_receipts /tmp/receipts    # synthetic receipts + truth.json
+  python -m scripts.eval_bills /tmp/receipts             # field-by-field score and time per bill
+  ```
+
+  Add your own photos to a folder with a `truth.json` to evaluate on real receipts; keep them out of the repository.
 
 ### Frontend integration
 
@@ -295,7 +306,7 @@ The frontend started as a mock-driven UI. It was connected one feature at a time
 ## 6. Testing
 
 ```bash
-cd backend && python -m pytest        # ~165 tests, ~30 s
+cd backend && python -m pytest        # 167 tests, ~25 s
 cd frontend && npm run lint && npm run build
 ```
 
