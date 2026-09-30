@@ -25,8 +25,10 @@ Reply with ONLY a JSON object, no explanation and no markdown, in exactly this s
 Rules:
 - items: one entry per purchased line. "amount" is the line's final price (quantity x unit price), as printed.
 - Never list subtotals, taxes, service charges, tips, discounts, round-off or the grand total as items.
-- taxes: one entry per tax line exactly as printed (GST, CGST, SGST, IGST, VAT, cess). Empty if none.
-- service_charges: one entry per service charge or tip line exactly as printed. Empty if none.
+- taxes: one entry per tax line exactly as printed (GST, CGST, SGST, IGST, VAT, cess, and "Service Tax",
+  which is a government tax despite its name). Empty if none.
+- service_charges: one entry per service charge or tip line exactly as printed: money kept by the
+  restaurant, such as "Service Charge" or "Tip". Empty if none.
 - Copy every amount as printed. Do not calculate, add up or correct anything.
 - total: the grand total actually payable, as printed.
 - Write numbers without currency symbols or thousands separators: 1234.50, not "Rs 1,234.50".
