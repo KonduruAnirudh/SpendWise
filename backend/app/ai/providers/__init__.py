@@ -18,6 +18,7 @@ def get_llm_provider() -> LLMProvider:
         base_url=settings.llm_base_url,
         api_key=settings.llm_api_key,
         model=settings.llm_model,
+        vision_model=settings.llm_vision_model,
     )
 
 

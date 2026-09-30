@@ -35,6 +35,7 @@ jobs:
       LLM_BASE_URL: http://localhost:11434/v1
       LLM_API_KEY: unused-in-tests
       LLM_MODEL: unused-in-tests
+      LLM_VISION_MODEL: unused-in-tests
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

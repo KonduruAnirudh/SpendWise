@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     llm_base_url: str
     llm_api_key: str
     llm_model: str
+    # Reads bill photos; must accept images (e.g. qwen3-vl:8b in Ollama).
+    llm_vision_model: str
 
     cors_origins: str = "http://localhost:5173"
 

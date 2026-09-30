@@ -20,9 +20,15 @@ class ScriptedProvider:
         self.calls.append(list(messages))
         return self.responses.pop(0) if self.responses else LLMResponse(content="(script finished)")
 
+    def vision(self, prompt, image, media_type):
+        raise AssertionError("the chat assistant never sends images")
+
 
 class FailingProvider:
     def chat(self, messages, tools):
+        raise LLMProviderError("connection refused")
+
+    def vision(self, prompt, image, media_type):
         raise LLMProviderError("connection refused")
 
 

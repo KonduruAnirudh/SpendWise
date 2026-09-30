@@ -36,3 +36,7 @@ class LLMProviderError(Exception):
 
 class LLMProvider(Protocol):
     def chat(self, messages: list[LLMMessage], tools: list[ToolSpec]) -> LLMResponse: ...
+
+    def vision(self, prompt: str, image: bytes, media_type: str) -> str:
+        """Ask the vision model about one image (e.g. image/jpeg) and return its text reply."""
+        ...
