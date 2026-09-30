@@ -2,7 +2,7 @@
 
 **Personal finance tracking, Splitwise-style expense sharing, and an AI assistant that answers questions from your own data.**
 
-A full-stack portfolio project: FastAPI + PostgreSQL on the backend, React on the frontend, and a local LLM (Ollama) for the assistant. The backend is covered by 110 automated tests, and CI runs them against a real PostgreSQL on every push.
+A full-stack portfolio project: FastAPI + PostgreSQL on the backend, React on the frontend, and a local LLM (Ollama) for the assistant. The backend is covered by 160+ automated tests, and CI runs them against a real PostgreSQL on every push.
 
 ---
 
@@ -17,6 +17,7 @@ A full-stack portfolio project: FastAPI + PostgreSQL on the backend, React on th
 | **Categories** | 11 system categories plus your own. System categories can't be deleted; custom names are unique per user (case-insensitive). |
 | **Dashboard & analytics** | Monthly totals, month-over-month change, spending by category, 12-month trends, per-account spending, monthly reports. |
 | **Expense sharing** | Groups with registered members (by email) and guests (by name). Seven split methods, per-member balances, the fewest payments to settle everything, and recorded settlements with undo. |
+| **Bill upload** | Photograph a receipt (or upload a PDF) in a group. A vision model reads it into a draft, which pre-fills an itemized expense for you to check, assign and save. Nothing is saved until you confirm. |
 | **AI assistant** | Ask things like *"What were my biggest expenses this month?"*. The model answers by calling read-only tools over your data, and the UI shows which tools it used. |
 
 ### Architecture
@@ -127,7 +128,8 @@ Always run Python tools with `python -m ...` from `backend/`, so the virtualenv'
 ### AI model
 
 ```bash
-ollama pull qwen3:8b
+ollama pull qwen3:8b                      # chat assistant
+ollama pull qwen3-vl:8b-instruct          # reads bill photos
 ```
 
 Ollama serves an OpenAI-compatible API on `http://localhost:11434/v1`. The first answer after the model loads can take 20–60 seconds; later ones are much faster.
@@ -168,7 +170,8 @@ The script creates a demo user and a second registered user (both on the reserve
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | token lifetime |
 | `LLM_BASE_URL` | `http://localhost:11434/v1` | any OpenAI-compatible endpoint |
 | `LLM_API_KEY` | `ollama` | Ollama ignores it; hosted providers need a real key |
-| `LLM_MODEL` | `qwen3:8b` | model name |
+| `LLM_MODEL` | `qwen3:8b` | model for the chat assistant (and for text PDFs) |
+| `LLM_VISION_MODEL` | `qwen3-vl:8b-instruct` | image-capable model that reads bill photos |
 | `CORS_ORIGINS` | `http://localhost:5173` | comma-separated allowed origins |
 | `DEMO_PASSWORD` | *(optional)* | used only by `scripts/seed_demo.py`; if unset, a random password is generated and printed |
 
@@ -199,6 +202,7 @@ Interactive docs are generated from the code: **http://localhost:8000/docs** (Sw
 | Groups | `GET/POST /groups`, `GET/DELETE /groups/{id}`, `GET/POST /groups/{id}/members`, `DELETE /groups/{id}/members/{member_id}` |
 | Group expenses | `GET/POST /groups/{id}/expenses`, `GET/DELETE /groups/{id}/expenses/{expense_id}` |
 | Balances & settlements | `GET /groups/{id}/balances`, `GET /groups/{id}/settlements/suggested`, `GET/POST /groups/{id}/settlements`, `DELETE /groups/{id}/settlements/{settlement_id}` |
+| Bills | `POST /groups/{id}/bills/parse` (multipart `file`) → an editable draft; nothing is saved |
 | AI | `POST /ai/chat`, `GET /ai/conversations`, `GET /ai/conversations/{id}/messages`, `DELETE /ai/conversations/{id}` |
 
 Conventions: money is sent and returned as **strings** (`"1500.00"`) so no precision is lost in JSON; errors are `{"detail": "..."}`.
@@ -257,6 +261,31 @@ question ─► model decides which tool(s) to call ─► backend runs the tool
 - **Why not RAG?** Financial questions need exact aggregates ("how much this month?"). SQL computes those correctly; retrieving text chunks would make the model do arithmetic it can get wrong.
 - **Provider abstraction:** an `LLMProvider` protocol with one OpenAI-compatible implementation; tests swap in a scripted fake.
 
+### Bill upload: vision model, human in the loop
+
+```
+photo/PDF ─► size check (5 MB → 413) ─► real type from magic bytes (JPEG/PNG/WebP/PDF, else 415)
+          ─► photo: straighten (EXIF), downscale to 2000 px, re-encode JPEG ─► vision model
+          ─► text PDF: extract text (pypdf) ─► text model;  scanned PDF ─► 400 "upload a photo instead"
+          ─► model replies JSON ─► validate into BillDraft (2-dp Decimals, items > 0, warnings)
+          ─► draft back to the UI ─► user edits, assigns lines ─► saved as an itemized expense
+```
+
+- **The draft is never saved** and the file is never written to disk: it's read into memory (Starlette's multipart spool limit is raised above the 5 MB cap, so uploads don't roll over to a temp file), and re-encoding the image also drops EXIF metadata such as GPS location.
+- **The type is checked from the file's bytes**, never from its name or `Content-Type`, which the client controls.
+- **Model output is untrusted.** The prompt asks for JSON only; the reply is parsed leniently (code fences, `"Rs 1,234.50"`) and validated strictly. Unusable lines are dropped with a warning; an ambiguous amount like `"2 x 150"` is rejected rather than merged into 2150. Invalid JSON is retried once, then 502; an unreachable model is 503.
+- **Reconciliation:** if items + tax + tip differ from the printed total by more than ₹1, the draft carries a warning. It's never rejected for that; the person reviewing fixes it. In the form, tax + tip become one assignable "Tax & service" line, and a round-off within ₹1 is folded into it so the expense equals what was paid.
+- **The model copies, the server adds.** The model lists each tax and service-charge line as printed (CGST, SGST, …) and the server sums them with `Decimal`. An earlier prompt asked the model for the tax total, and it computed "5% of the subtotal" (52.75) instead of adding the printed lines (52.76).
+- **Choosing the model:** candidates that fit in 18 GB were scored through the real pipeline on three receipts with known answers (38 fields: merchant, date, every item, tax, tip, total), including a tilted, blurred "photo":
+
+  | Model (Ollama) | Fields correct | Time per bill (M3 Pro) |
+  |---|---|---|
+  | `qwen3-vl:8b` (thinking by default) | 38/38 | ~78 s |
+  | `qwen3.5:9b` (thinking by default) | 38/38 | ~131 s |
+  | **`qwen3-vl:8b-instruct`** | **38/38** | **~18 s** |
+
+  Thinking can't be switched off through the OpenAI-compatible API (`reasoning_effort` and `think` were tried), so the non-thinking instruct variant is used. The test receipts are synthetic; accuracy on real, crumpled, badly lit receipts will be lower, which is why every draft is reviewed by a person.
+
 ### Frontend integration
 
 The frontend started as a mock-driven UI. It was connected one feature at a time, with each service switching from mock to live behind a flag, and the mocks were deleted once everything was live. Each service has an **adapter** (`toUiAccount`, `toUiTransaction`, …) that translates the API contract into the shapes the pages render, so the backend's naming never leaks into the components.
@@ -266,13 +295,14 @@ The frontend started as a mock-driven UI. It was connected one feature at a time
 ## 6. Testing
 
 ```bash
-cd backend && python -m pytest        # 110 tests, ~20 s
+cd backend && python -m pytest        # ~165 tests, ~30 s
 cd frontend && npm run lint && npm run build
 ```
 
 - **API tests** go through FastAPI's `TestClient` against the real PostgreSQL test database: auth, ownership (404 for other users' data), validation, business-rule errors (403/409/400), and the happy paths of each resource.
 - **Unit tests** cover the pure split engine and the debt-simplification algorithm.
-- **Fake LLM:** AI tests replace the provider with a scripted one via `app.dependency_overrides`, so they're deterministic and need no model.
+- **Fake LLM:** AI and bill tests replace the provider with a scripted one via `app.dependency_overrides`, so they're deterministic and need no model.
+- **Bill upload tests** cover the size limit (413), a disguised file type (415), non-members (404), downscaling, invalid model JSON (retry, then 502), reconciliation warnings, text and scanned PDFs, and an unreachable model (503); unit tests cover magic-byte detection, amount parsing and reconciliation.
 - **Migration test:** builds the schema with `alembic upgrade head`, compares it to the models with `compare_metadata`, then downgrades to base. It exists because the AI tables once had models but no migration: every API test passed, since tests create tables directly from the models, while the real database was missing them.
 - **Seed test:** runs the demo seed twice and checks that it's repeatable, leaves other users alone, and that balances net to zero.
 - **CI** (GitHub Actions) runs the backend suite against a PostgreSQL 16 service container, and the frontend lint and build, on every push to `main` and every pull request.
@@ -302,4 +332,4 @@ This is an MVP: correct, tested, and honest about what it doesn't do. Unsupporte
 | AI | Streaming responses; an evaluation set of questions with expected tool calls and answers; caching of repeated questions |
 | Operations | Deployment (e.g. containers on ECS or App Runner with RDS PostgreSQL), managed secrets, structured logging and metrics, backups |
 
-**Bill upload (designed, deferred).** Upload a receipt image/PDF → validate type and size → a vision model (for example `qwen2.5vl:7b` via Ollama) extracts `{merchant, date, items[{name, amount}], total}` → the result is returned as a **draft, not saved** → the user reviews and edits it → it's posted as an `itemized` group expense. Keeping a human in the loop matters because OCR makes mistakes. Production would add object storage (S3), virus scanning, size limits, and handling for bad scans.
+**Bill upload in production.** The MVP keeps files in memory and never stores them. Production would add: a request-size limit at the reverse proxy (e.g. nginx `client_max_body_size`) so oversized uploads are refused before the app buffers them; storing originals in object storage (S3) if receipts should be kept, with malware scanning; a background job queue so a slow model doesn't hold a web worker; HEIC support for iPhone photos; and an accuracy evaluation set of real receipts, re-run whenever the model or prompt changes.
