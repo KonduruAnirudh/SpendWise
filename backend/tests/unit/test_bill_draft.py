@@ -140,6 +140,18 @@ def test_build_draft_drops_invalid_lines_with_warnings():
     ]
 
 
+def test_tax_and_service_lines_are_added_up_by_the_server_not_the_model():
+    raw = {
+        "items": [{"name": "Thali", "amount": 1055}],
+        "taxes": [{"name": "CGST 2.5%", "amount": "26.38"}, {"name": "SGST 2.5%", "amount": 26.38}],
+        "service_charges": [{"name": "Service Charge 5%", "amount": 52.75}, {"name": "Tip", "amount": "??"}],
+        "total": 1160,
+    }
+    draft = build_draft(raw, "INR")
+    assert (draft.tax, draft.tip) == (Decimal("52.76"), Decimal("52.75"))
+    assert draft.warnings == ['Skipped the tip line "Tip": its amount couldn\'t be read.']
+
+
 def test_build_draft_flags_a_foreign_currency_and_a_missing_total():
     draft = build_draft({"currency": "usd", "items": [{"name": "Burger", "amount": 12.5}], "bill_date": "28/09/2026"}, "INR")
     assert draft.currency == "USD"

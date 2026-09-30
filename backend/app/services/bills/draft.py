@@ -17,15 +17,18 @@ BILL_PROMPT = """You read receipts and bills and return their contents as JSON.
 
 Reply with ONLY a JSON object, no explanation and no markdown, in exactly this shape:
 {"merchant": string or null, "bill_date": "YYYY-MM-DD" or null, "currency": "ISO 4217 code" or null,
- "items": [{"name": string, "amount": number}], "tax": number, "tip": number, "total": number or null,
- "warnings": [string]}
+ "items": [{"name": string, "amount": number}],
+ "taxes": [{"name": string, "amount": number}],
+ "service_charges": [{"name": string, "amount": number}],
+ "total": number or null, "warnings": [string]}
 
 Rules:
 - items: one entry per purchased line. "amount" is the line's final price (quantity x unit price), as printed.
 - Never list subtotals, taxes, service charges, tips, discounts, round-off or the grand total as items.
-- tax: the sum of all taxes (GST, CGST, SGST, IGST, VAT, cess). 0 if there are none.
-- tip: the sum of service charges and tips. 0 if there are none.
-- total: the grand total actually payable.
+- taxes: one entry per tax line exactly as printed (GST, CGST, SGST, IGST, VAT, cess). Empty if none.
+- service_charges: one entry per service charge or tip line exactly as printed. Empty if none.
+- Copy every amount as printed. Do not calculate, add up or correct anything.
+- total: the grand total actually payable, as printed.
 - Write numbers without currency symbols or thousands separators: 1234.50, not "Rs 1,234.50".
 - If the bill has a discount, don't subtract it from the items; add a warning such as "Discount of 50.00".
 - If something is unreadable or you are unsure of a value, give your best reading and add a short warning.
@@ -113,8 +116,9 @@ def build_draft(raw: dict[str, Any], default_currency: str) -> BillDraft:
         else:
             items.append(BillItem(name=name, amount=amount))
 
-    tax = _non_negative(raw.get("tax"), "tax", warnings)
-    tip = _non_negative(raw.get("tip"), "tip", warnings)
+    # The model copies each tax/charge line; the server adds them up (models are unreliable at arithmetic).
+    tax = _line_total(raw, "taxes", "tax", warnings)
+    tip = _line_total(raw, "service_charges", "tip", warnings)
     total = to_money(raw.get("total"))
     if total is not None and total <= 0:
         warnings.append(f"Ignored the bill total ({total:.2f}): it isn't more than zero.")
@@ -144,6 +148,22 @@ def build_draft(raw: dict[str, Any], default_currency: str) -> BillDraft:
         total=total,
         warnings=warnings,
     )
+
+
+def _line_total(raw: dict[str, Any], lines_key: str, total_key: str, warnings: list[str]) -> Decimal:
+    """Sum the printed lines under `lines_key` (e.g. CGST + SGST); fall back to a single `total_key` amount."""
+    lines = raw.get(lines_key)
+    if not isinstance(lines, list):
+        return _non_negative(raw.get(total_key), total_key, warnings)
+    total = Decimal("0.00")
+    for index, line in enumerate(lines, start=1):
+        label = str(line.get("name") or f"line {index}").strip()[:60] if isinstance(line, dict) else f"line {index}"
+        amount = to_money(line.get("amount")) if isinstance(line, dict) else None
+        if amount is None or amount < 0:
+            warnings.append(f'Skipped the {total_key} line "{label}": its amount couldn\'t be read.')
+        else:
+            total += amount
+    return total
 
 
 def _non_negative(value: Any, label: str, warnings: list[str]) -> Decimal:
