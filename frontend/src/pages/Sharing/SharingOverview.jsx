@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { Badge } from '../../components/ui/Badge'
 import { CreateGroupModal } from '../../features/expense-sharing/components/CreateGroupModal'
 import { useAsync } from '../../hooks/useAsync'
 import { expenseService } from '../../services/expenseService'
@@ -46,12 +45,7 @@ export function SharingOverviewPage() {
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <ActionLink to="/groups" title="+ Create group" detail="Start empty, then add people." />
         <ActionLink to="/groups" title="+ Add expense" detail="Open a group to split a cost." />
-        <Card className="h-full">
-          <p className="flex items-center gap-2 font-medium">
-            Upload bill <Badge tone="accent">Coming soon</Badge>
-          </p>
-          <p className="mt-1 text-sm text-muted">Scan a receipt into an itemized split. Use Itemized for now.</p>
-        </Card>
+        <ActionLink to="/groups" title="Upload bill" detail="Open a group and scan a receipt into an itemized split." />
       </div>
 
       <h2 className="mb-3 text-base font-semibold">Recent groups</h2>

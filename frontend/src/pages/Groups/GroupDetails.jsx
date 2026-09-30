@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
@@ -13,11 +13,15 @@ import { ExpenseComposer } from '../../features/expense-sharing/components/Expen
 import { SelectedMembers } from '../../features/expense-sharing/components/SelectedMembers'
 import { MemberForm } from '../../features/expense-sharing/components/MemberForm'
 import { GroupSettlements } from '../../features/expense-sharing/components/GroupSettlements'
+import { BillUploadFlow } from '../../features/expense-sharing/components/BillUploadFlow'
+import { BillDraftNotice } from '../../features/expense-sharing/components/BillDraftNotice'
 import { useAsync } from '../../hooks/useAsync'
 import { useExpenseSplit } from '../../hooks/useExpenseSplit'
+import { useBillUpload } from '../../hooks/useBillUpload'
 import { useToast } from '../../context/ToastContext'
 import { groupService } from '../../services/groupService'
 import { expenseService } from '../../services/expenseService'
+import { draftToItemizedLines } from '../../services/billService'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import { emptyMember, validateMember, validateSharedExpense } from '../../utils/validators'
 
@@ -33,6 +37,10 @@ export function GroupDetailsPage() {
   const balances = useAsync(() => expenseService.getBalances(groupId), [groupId])
   const settlements = useAsync(() => expenseService.listSettlements(groupId), [groupId])
   const [expenseOpen, setExpenseOpen] = useState(false)
+  const [billOpen, setBillOpen] = useState(false)
+  // The bill draft being reviewed in the itemized form (null for an ordinary expense).
+  const [billDraft, setBillDraft] = useState(null)
+  const billOpenRef = useRef(false)
   const [memberOpen, setMemberOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -48,6 +56,7 @@ export function GroupDetailsPage() {
 
   const members = group.data?.members || EMPTY_MEMBERS
   const split = useExpenseSplit({ members })
+  const bill = useBillUpload(groupId)
 
   const peopleById = useMemo(
     () => Object.fromEntries(members.map((member) => [member.id, member])),
@@ -83,7 +92,34 @@ export function GroupDetailsPage() {
     split.setTax(0)
     split.setTip(0)
     split.resetEqualAdjustments()
+    setBillDraft(null)
     setExpenseOpen(true)
+  }
+
+  function openBill() {
+    bill.reset()
+    billOpenRef.current = true
+    setBillOpen(true)
+  }
+
+  function closeBill() {
+    billOpenRef.current = false
+    bill.reset()
+    setBillOpen(false)
+  }
+
+  async function readBill(file) {
+    const draft = await bill.upload(file)
+    // Ignore a result that arrives after the user closed the upload dialog.
+    if (!draft || !billOpenRef.current) return
+    openExpense()
+    setForm({ name: draft.merchant || 'Bill', date: draft.billDate || new Date().toISOString().slice(0, 10) })
+    split.setMethod('itemized')
+    // Tax and tip arrive as one "Tax & service" line, assignable like any other item.
+    split.applyBill({ total: draft.total ?? '', tax: 0, tip: 0, items: draftToItemizedLines(draft) })
+    split.setPaidBy(String(group.data.myMemberId))
+    setBillDraft(draft)
+    closeBill()
   }
 
   async function saveExpense() {
@@ -126,6 +162,7 @@ export function GroupDetailsPage() {
       setSaving(false)
     }
     setExpenseOpen(false)
+    setBillDraft(null)
     refreshGroup()
   }
 
@@ -186,6 +223,9 @@ export function GroupDetailsPage() {
         description={`${members.length} members`}
         actions={
           <>
+            <Button variant="outline" onClick={openBill}>
+              Upload bill
+            </Button>
             <Button variant="outline" onClick={() => setMemberOpen(true)}>
               Manage members
             </Button>
@@ -261,7 +301,7 @@ export function GroupDetailsPage() {
       <Modal
         open={expenseOpen}
         onClose={() => setExpenseOpen(false)}
-        title="Add shared expense"
+        title={billDraft ? 'Split this bill' : 'Add shared expense'}
         className="sm:max-w-2xl"
         footer={
           <>
@@ -274,7 +314,14 @@ export function GroupDetailsPage() {
           </>
         }
       >
-        <ExpenseComposer members={members} split={split} values={form} onValues={setForm} errors={errors} />
+        <div className="space-y-5">
+          {billDraft && <BillDraftNotice draft={billDraft} linesTotal={split.total} />}
+          <ExpenseComposer members={members} split={split} values={form} onValues={setForm} errors={errors} />
+        </div>
+      </Modal>
+
+      <Modal open={billOpen} onClose={closeBill} title="Upload bill" className="sm:max-w-lg">
+        <BillUploadFlow flow={{ ...bill, upload: readBill }} />
       </Modal>
 
       <Modal

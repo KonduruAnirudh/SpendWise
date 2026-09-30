@@ -49,6 +49,9 @@ export async function apiClient(path, { body, form, headers: extraHeaders, ...op
   if (form) {
     headers['Content-Type'] = 'application/x-www-form-urlencoded'
     payload = new URLSearchParams(form)
+  } else if (body instanceof FormData) {
+    // Multipart (file uploads): no Content-Type here, so the browser adds it with the part boundary.
+    payload = body
   } else if (body !== undefined) {
     headers['Content-Type'] = 'application/json'
     payload = JSON.stringify(body)
@@ -90,6 +93,7 @@ export const api = {
   get: (path, options) => apiClient(path, options),
   post: (path, body, options) => apiClient(path, { ...options, method: 'POST', body }),
   postForm: (path, form, options) => apiClient(path, { ...options, method: 'POST', form }),
+  upload: (path, formData, options) => apiClient(path, { ...options, method: 'POST', body: formData }),
   put: (path, body, options) => apiClient(path, { ...options, method: 'PUT', body }),
   patch: (path, body, options) => apiClient(path, { ...options, method: 'PATCH', body }),
   delete: (path, options) => apiClient(path, { ...options, method: 'DELETE' }),
