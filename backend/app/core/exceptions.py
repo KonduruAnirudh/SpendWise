@@ -30,6 +30,20 @@ class ConflictError(AppError):
     status_code = 409
 
 
+class PayloadTooLargeError(AppError):
+    status_code = 413
+
+
+class UnsupportedMediaTypeError(AppError):
+    status_code = 415
+
+
+class BadGatewayError(AppError):
+    """An upstream service (e.g. the LLM) answered, but the answer was unusable."""
+
+    status_code = 502
+
+
 class ServiceUnavailableError(AppError):
     status_code = 503
 

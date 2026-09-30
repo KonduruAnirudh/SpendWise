@@ -8,4 +8,6 @@ pydantic-settings==2.15.0
 pyjwt==2.14.0
 pwdlib[argon2]==0.3.1
 openai==3.19.0
+pillow==12.3.0
+pypdf==6.19.0
 pytest==9.1.1

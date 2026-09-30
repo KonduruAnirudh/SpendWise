@@ -6,6 +6,7 @@ from app.api.v1.routes import (
     auth,
     categories,
     dashboard,
+    group_bills,
     group_expenses,
     group_settlements,
     groups,
@@ -25,4 +26,5 @@ api_router.include_router(dashboard.router)
 api_router.include_router(groups.router)
 api_router.include_router(group_expenses.router)
 api_router.include_router(group_settlements.router)
+api_router.include_router(group_bills.router)
 api_router.include_router(ai.router)
