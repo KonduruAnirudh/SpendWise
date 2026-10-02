@@ -2,19 +2,24 @@ import { useState } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
+import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/ToastContext'
 import { MemberForm } from './MemberForm'
-import { emptyMember, validateMember } from '../../../utils/validators'
+import { emptyMember, normalizeUsername, validateMember } from '../../../utils/validators'
 import { SelectedMembers } from './SelectedMembers'
 import { groupService } from '../../../services/groupService'
+import { userService } from '../../../services/userService'
 
 export function CreateGroupModal({ open, onClose, onCreated }) {
+  const { user } = useAuth()
   const { push } = useToast()
   const [name, setName] = useState('')
-  // Staged locally as {id, name, email}; saved as group members after the group exists.
+  // Staged locally; saved as group members after the group exists. Usernames are checked
+  // when staged, so the group isn't created with people who can't be added.
   const [members, setMembers] = useState([])
   const [member, setMember] = useState(emptyMember)
   const [errors, setErrors] = useState({})
+  const [checking, setChecking] = useState(false)
   const [saving, setSaving] = useState(false)
 
   function reset() {
@@ -24,16 +29,44 @@ export function CreateGroupModal({ open, onClose, onCreated }) {
     setErrors({})
   }
 
-  function stageMember() {
+  async function stageMember() {
     const nextErrors = validateMember(member)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
-    const label = member.name.trim() || member.email.trim()
-    setMembers((current) => [
-      ...current,
-      { id: `staged-${current.length}-${label}`, name: label, displayName: member.name.trim(), email: member.email.trim() },
-    ])
-    setMember(emptyMember)
+
+    if (member.kind === 'guest') {
+      const guestName = member.name.trim()
+      if (members.some((item) => item.kind === 'guest' && item.name.toLowerCase() === guestName.toLowerCase())) {
+        setErrors({ name: `${guestName} is already on the list.` })
+        return
+      }
+      setMembers((current) => [...current, { id: `guest-${guestName}`, kind: 'guest', name: guestName }])
+      setMember({ ...emptyMember, kind: 'guest' })
+      return
+    }
+
+    const username = normalizeUsername(member.username)
+    if (username === user?.username) {
+      setErrors({ username: "That's you. You're added automatically as the owner." })
+      return
+    }
+    if (members.some((item) => item.username === username)) {
+      setErrors({ username: `@${username} is already on the list.` })
+      return
+    }
+    setChecking(true)
+    try {
+      const found = await userService.lookup(username)
+      setMembers((current) => [
+        ...current,
+        { id: `user-${found.username}`, kind: 'user', username: found.username, name: found.name },
+      ])
+      setMember(emptyMember)
+    } catch (error) {
+      setErrors({ username: error.status === 404 ? `No SpendWise user is called @${username}.` : error.message })
+    } finally {
+      setChecking(false)
+    }
   }
 
   async function create() {
@@ -45,7 +78,7 @@ export function CreateGroupModal({ open, onClose, onCreated }) {
     try {
       const group = await groupService.create({
         name: name.trim(),
-        members: members.map((item) => ({ name: item.displayName, email: item.email })),
+        members,
       })
       ;(group.failedMembers || []).forEach((failed) => push(`${failed.name} wasn't added: ${failed.message}`, 'error'))
       reset()
@@ -88,7 +121,7 @@ export function CreateGroupModal({ open, onClose, onCreated }) {
         <div className="rounded-xl border border-border p-3">
           <MemberForm values={member} onChange={setMember} errors={errors} />
           <div className="mt-3 flex justify-end">
-            <Button size="sm" variant="outline" onClick={stageMember}>
+            <Button size="sm" variant="outline" onClick={stageMember} loading={checking}>
               Add to list
             </Button>
           </div>

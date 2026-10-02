@@ -58,6 +58,7 @@ export const PersonalInformation = forwardRef(function PersonalInformation(
         <div className="space-y-5">
           <dl className="grid gap-5 sm:grid-cols-2">
             <Field label="Full name" value={profile.name || <span className="text-muted">Not set</span>} />
+            <Field label="Username" value={profile.username ? `@${profile.username}` : '—'} />
             <Field
               label="Email"
               value={

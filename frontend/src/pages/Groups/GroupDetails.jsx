@@ -48,6 +48,7 @@ export function GroupDetailsPage() {
   const [saving, setSaving] = useState(false)
   const [memberForm, setMemberForm] = useState(emptyMember)
   const [memberErrors, setMemberErrors] = useState({})
+  const [addingMember, setAddingMember] = useState(false)
   const [form, setForm] = useState({
     name: '',
     date: new Date().toISOString().slice(0, 10),
@@ -170,13 +171,17 @@ export function GroupDetailsPage() {
     const nextErrors = validateMember(memberForm)
     setMemberErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
+    setAddingMember(true)
     try {
       const added = await groupService.addMember(groupId, memberForm)
       push(`${added.name} added to the group.`)
-      setMemberForm(emptyMember)
+      setMemberForm({ ...emptyMember, kind: memberForm.kind })
       refreshGroup()
     } catch (error) {
-      setMemberErrors({ [memberForm.email?.trim() ? 'email' : 'name']: error.message })
+      // 404 (no such username) and 409 (already a member, name taken) explain themselves.
+      setMemberErrors({ [memberForm.kind === 'guest' ? 'name' : 'username']: error.message })
+    } finally {
+      setAddingMember(false)
     }
   }
 
@@ -329,6 +334,7 @@ export function GroupDetailsPage() {
         onClose={() => {
           setMemberOpen(false)
           setMemberErrors({})
+          setMemberForm(emptyMember)
         }}
         title="Manage members"
         className="sm:max-w-lg"
@@ -337,7 +343,9 @@ export function GroupDetailsPage() {
             <Button variant="ghost" onClick={() => setMemberOpen(false)}>
               Done
             </Button>
-            <Button onClick={addMember}>Add member</Button>
+            <Button onClick={addMember} loading={addingMember}>
+              Add member
+            </Button>
           </>
         }
       >

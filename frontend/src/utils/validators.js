@@ -13,9 +13,27 @@ export function validateLogin({ email, password }) {
   return errors
 }
 
-export function validateSignup({ name, email, password, confirmPassword, terms }) {
+// Mirrors the API: 3 to 30 characters, lowercase letters, numbers and underscores, starting with a letter.
+export const USERNAME_PATTERN = /^[a-z][a-z0-9_]{2,29}$/
+export const USERNAME_RULE = '3 to 30 characters: lowercase letters, numbers and underscores, starting with a letter.'
+
+// "@Asha_K " and "asha_k" are the same handle.
+export function normalizeUsername(value) {
+  return String(value ?? '').trim().replace(/^@/, '').toLowerCase()
+}
+
+export function validateUsername(value) {
+  const username = normalizeUsername(value)
+  if (!username) return 'Username is required.'
+  if (!USERNAME_PATTERN.test(username)) return `Use ${USERNAME_RULE}`
+  return null
+}
+
+export function validateSignup({ name, username, email, password, confirmPassword, terms }) {
   const errors = validateLogin({ email, password })
   if (!name?.trim()) errors.name = 'Full name is required.'
+  const usernameError = validateUsername(username)
+  if (usernameError) errors.username = usernameError
   if (password && confirmPassword !== password) {
     errors.confirmPassword = 'Passwords do not match.'
   }
@@ -45,13 +63,17 @@ export function validateAccount(values) {
   return errors
 }
 
-export const emptyMember = { name: '', email: '' }
+// kind "user": a SpendWise account, found by username. kind "guest": someone without an account.
+export const emptyMember = { kind: 'user', username: '', name: '' }
 
-// Group members: a registered user by email, or a guest by name.
-export function validateMember({ name, email }) {
+export function validateMember({ kind, username, name }) {
   const errors = {}
-  if (!name?.trim() && !email?.trim()) errors.name = 'Enter a name, an email, or both.'
-  if (email?.trim() && !isValidEmail(email)) errors.email = 'Please enter a valid email address.'
+  if (kind === 'guest') {
+    if (!name?.trim()) errors.name = "Enter the guest's name."
+  } else {
+    const usernameError = validateUsername(username)
+    if (usernameError) errors.username = usernameError
+  }
   return errors
 }
 

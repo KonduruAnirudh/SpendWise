@@ -5,6 +5,7 @@ export function toUiUser(apiUser) {
   return {
     id: apiUser.id,
     name: apiUser.full_name,
+    username: apiUser.username,
     email: apiUser.email,
     avatarUrl: null,
     currency: apiUser.currency,
@@ -22,9 +23,14 @@ export const authService = {
     return { token, user: toUiUser(me) }
   },
 
+  async me() {
+    return toUiUser(await api.get('/users/me'))
+  },
+
   async signup(payload) {
     await api.post('/auth/register', {
       full_name: payload.name,
+      username: payload.username,
       email: payload.email,
       password: payload.password,
     })

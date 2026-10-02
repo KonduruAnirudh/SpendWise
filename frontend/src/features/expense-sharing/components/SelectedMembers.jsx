@@ -11,7 +11,14 @@ export function SelectedMembers({ members, onRemove }) {
       {members.map((member) => (
         <li key={member.id} className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-sm">
           <Avatar name={member.name} className="size-5 text-[9px]" />
-          {member.name}
+          <span>
+            {member.name}
+            {member.username ? (
+              <span className="ml-1 text-xs text-subtle">@{member.username}</span>
+            ) : member.kind === 'guest' || member.isGuest ? (
+              <span className="ml-1 text-xs text-subtle">guest</span>
+            ) : null}
+          </span>
           {onRemove && (
             <button type="button" onClick={() => onRemove(member.id)} className="text-muted hover:text-fg" aria-label={`Remove ${member.name}`}>
               <X className="size-3.5" />

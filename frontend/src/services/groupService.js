@@ -1,5 +1,6 @@
 import { api } from './api'
 import { fromPaise, toPaise } from '../utils/splitCalculations'
+import { normalizeUsername } from '../utils/validators'
 
 // ---------- Adapters: backend contract → shapes the sharing pages already use ----------
 // Members are group_members rows (registered users or guests), never users.id.
@@ -7,6 +8,7 @@ export function toUiMember(apiMember) {
   return {
     id: apiMember.id,
     name: apiMember.display_name,
+    username: apiMember.username,
     role: apiMember.role,
     isGuest: apiMember.is_guest,
   }
@@ -27,12 +29,11 @@ function toUiGroup(detail, expenses = [], myNet = null) {
   }
 }
 
-// Registered users are added by email; anyone else becomes a guest with just a name.
+// SpendWise users are added by username (the group then shows up for them too);
+// anyone else becomes a guest with just a name.
 function toApiMember(person) {
-  const email = person.email?.trim()
-  const name = person.name?.trim()
-  if (email) return name ? { email, display_name: name } : { email }
-  return { display_name: name }
+  if (person.kind === 'guest') return { display_name: person.name.trim() }
+  return { username: normalizeUsername(person.username) }
 }
 
 async function loadGroup(groupId, myNet = null) {
@@ -65,7 +66,7 @@ export const groupService = {
       try {
         await api.post(`/groups/${detail.id}/members`, toApiMember(person))
       } catch (error) {
-        failed.push({ name: person.name || person.email, message: error.message })
+        failed.push({ name: person.kind === 'guest' ? person.name : `@${normalizeUsername(person.username)}`, message: error.message })
       }
     }
     return { ...(await loadGroup(detail.id, 0)), failedMembers: failed }
@@ -75,7 +76,7 @@ export const groupService = {
     return (await api.get(`/groups/${groupId}/members`)).map(toUiMember)
   },
 
-  // `person` is {name, email}.
+  // `person` is {kind: 'user', username} or {kind: 'guest', name}.
   async addMember(groupId, person) {
     return toUiMember(await api.post(`/groups/${groupId}/members`, toApiMember(person)))
   },

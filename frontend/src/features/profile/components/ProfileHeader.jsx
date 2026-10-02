@@ -23,6 +23,7 @@ export function ProfileHeader({ profile, accountCount, onEdit }) {
             <h2 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
               {profile.name || <span className="text-muted">Add your name</span>}
             </h2>
+            {profile.username && <p className="mt-0.5 text-sm font-medium text-accent">@{profile.username}</p>}
             {/* Long addresses wrap instead of overflowing on small screens. */}
             <p className="mt-0.5 break-all text-sm text-muted">{profile.email}</p>
           </div>

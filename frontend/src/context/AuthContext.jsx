@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { AUTH_STORAGE_KEY, PREFERENCES_STORAGE_KEY } from '../utils/constants'
 import { authService } from '../services/authService'
 
@@ -34,11 +34,34 @@ export function AuthProvider({ children }) {
     return { ...current, user: { ...current.user, ...readFinancialProfile() } }
   })
 
+  // Accepts a session or an updater, so back-to-back updates never overwrite each other.
   const persist = useCallback((next) => {
-    setSession(next)
-    if (next) localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next))
-    else localStorage.removeItem(AUTH_STORAGE_KEY)
+    setSession((current) => {
+      const value = typeof next === 'function' ? next(current) : next
+      if (value) localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(value))
+      else localStorage.removeItem(AUTH_STORAGE_KEY)
+      return value
+    })
   }, [])
+
+  // The stored user is a snapshot from sign-in. Refresh it once per load so a changed name,
+  // username or currency (from this or another device) shows everywhere. A 401 here is
+  // handled by api.js (back to /login).
+  const token = session?.token
+  useEffect(() => {
+    if (!token) return undefined
+    let cancelled = false
+    authService
+      .me()
+      .then((fresh) => {
+        if (cancelled) return
+        persist((current) => (current?.token === token ? { ...current, user: { ...current.user, ...fresh } } : current))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [token, persist])
 
   const login = useCallback(
     async (email, password) => {
@@ -57,9 +80,9 @@ export function AuthProvider({ children }) {
       if (partial.incomeTracking !== undefined) financial.incomeTracking = partial.incomeTracking
       if (partial.monthlyBudget !== undefined) financial.monthlyBudget = partial.monthlyBudget
       if (Object.keys(financial).length) writeFinancialProfile(financial)
-      if (session) persist({ ...session, user: { ...session.user, ...partial } })
+      persist((current) => (current ? { ...current, user: { ...current.user, ...partial } } : current))
     },
-    [persist, session],
+    [persist],
   )
 
   const value = useMemo(
