@@ -60,7 +60,7 @@ export function TransactionsPage() {
   }, [list.data, page])
 
   function openCreate() {
-    setForm({ ...emptyForm, accountId: user?.defaultAccountId || '', categoryId: user?.defaultCategoryId || '' })
+    setForm({ ...emptyForm, accountId: user?.defaultAccountId || '' })
     setEditing('new')
     setErrors({})
   }

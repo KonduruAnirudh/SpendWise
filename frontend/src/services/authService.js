@@ -9,7 +9,6 @@ export function toUiUser(apiUser) {
     email: apiUser.email,
     avatarUrl: null,
     currency: apiUser.currency,
-    dateFormat: 'dd MMM',
     createdAt: apiUser.created_at,
   }
 }

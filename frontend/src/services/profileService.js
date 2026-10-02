@@ -16,9 +16,11 @@ export const PROFILE_API = {
   deleteAccount: false,
 }
 
-// The same key AuthContext merges into the signed-in user, so the Dashboard and Transactions
-// pages see saved preferences (monthly budget, default account) immediately.
+// Device preferences, all under the key AuthContext merges into the signed-in user, so the
+// Dashboard and Transactions pages see them immediately. Profile and Settings both save here.
 export const DEFAULT_PREFERENCES = {
+  dateFormat: 'dd MMM',
+  incomeTracking: '',
   defaultAccountId: '',
   monthlyBudget: null,
   aiAnalysisEnabled: true,
