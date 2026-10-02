@@ -46,9 +46,11 @@ from app.services import (
 # example.com is reserved for documentation and examples (RFC 2606), so these can never be real inboxes.
 DEMO_EMAIL = "demo@example.com"
 DEMO_NAME = "Demo User"
+DEMO_USERNAME = "demo"
 # A second registered user, so the demo shows both kinds of group member (registered and guest).
 FRIEND_EMAIL = "priya.demo@example.com"
 FRIEND_NAME = "Priya"
+FRIEND_USERNAME = "priya"
 # The API's minimum password length (UserCreate).
 MIN_PASSWORD_LENGTH = 8
 
@@ -162,7 +164,7 @@ def seed_goa_trip(ctx: Context) -> None:
     detail = group_service.create_group(ctx.db, ctx.user, GroupCreate(name="Goa Trip"))
     owner = group_service.get_membership(ctx.db, ctx.user, detail.id)
     me = owner.id
-    priya = add_member(ctx.db, owner, email=FRIEND_EMAIL)
+    priya = add_member(ctx.db, owner, username=FRIEND_USERNAME)
     rahul = add_member(ctx.db, owner, display_name="Rahul")
     arun = add_member(ctx.db, owner, display_name="Arun")
     everyone = [me, priya, rahul, arun]
@@ -209,8 +211,8 @@ def seed_demo(db: Session, password: str, today: date | None = None) -> dict:
     remove_user(db, DEMO_EMAIL)
     remove_user(db, FRIEND_EMAIL)
 
-    user = auth_service.register_user(db, UserCreate(email=DEMO_EMAIL, password=password, full_name=DEMO_NAME))
-    auth_service.register_user(db, UserCreate(email=FRIEND_EMAIL, password=password, full_name=FRIEND_NAME))
+    user = auth_service.register_user(db, UserCreate(email=DEMO_EMAIL, password=password, full_name=DEMO_NAME, username=DEMO_USERNAME))
+    auth_service.register_user(db, UserCreate(email=FRIEND_EMAIL, password=password, full_name=FRIEND_NAME, username=FRIEND_USERNAME))
 
     accounts = {}
     for name, account_type, opening in (

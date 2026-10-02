@@ -37,3 +37,27 @@ def test_migrations_match_models():
             command.downgrade(_alembic(connection), "base")
             connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
         engine.dispose()
+
+
+def test_username_migration_backfills_existing_users():
+    """Users created before usernames existed get one from their email; clashes get a number."""
+    engine = create_engine(settings.test_database_url)
+    with engine.begin() as connection:
+        Base.metadata.drop_all(connection)
+        connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        command.upgrade(_alembic(connection), "a5de3252c88d")
+        for email in ["asha.k@example.com", "asha.k@other.com", "7up@example.com", "ab@example.com"]:
+            connection.execute(
+                text("INSERT INTO users (email, password_hash, full_name, currency) VALUES (:e, 'x', 'N', 'INR')"),
+                {"e": email},
+            )
+        command.upgrade(_alembic(connection), "7fe70c778bf2")
+    try:
+        with engine.connect() as connection:
+            rows = connection.execute(text("SELECT email, username FROM users ORDER BY id")).all()
+        assert [username for _, username in rows] == ["ashak", "ashak2", "user7up", "ab_user"]
+    finally:
+        with engine.begin() as connection:
+            command.downgrade(_alembic(connection), "base")
+            connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        engine.dispose()

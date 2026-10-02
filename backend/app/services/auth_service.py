@@ -11,8 +11,10 @@ from app.core.security import (
 from app.models.user import User
 from app.repositories import user_repository
 from app.schemas.user import UserCreate
+from app.services.user_service import suggest_username
 
 DUPLICATE_EMAIL = "An account with this email already exists"
+TAKEN_USERNAME = "This username is taken"
 BAD_CREDENTIALS = "Incorrect email or password"
 
 
@@ -20,9 +22,12 @@ def register_user(db: Session, data: UserCreate) -> User:
     email = data.email.lower()
     if user_repository.get_by_email(db, email) is not None:
         raise ConflictError(DUPLICATE_EMAIL)
+    if data.username is not None and user_repository.username_exists(db, data.username):
+        raise ConflictError(TAKEN_USERNAME)
 
     user = User(
         email=email,
+        username=data.username or suggest_username(db, email),
         password_hash=hash_password(data.password),
         full_name=data.full_name.strip(),
         currency=data.currency,
@@ -31,8 +36,9 @@ def register_user(db: Session, data: UserCreate) -> User:
     try:
         db.commit()
     except IntegrityError:
+        # Two sign-ups racing for the same email or username: the unique indexes decide.
         db.rollback()
-        raise ConflictError(DUPLICATE_EMAIL)
+        raise ConflictError("That email or username was just taken; try again")
     db.refresh(user)
     return user
 

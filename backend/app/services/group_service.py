@@ -62,14 +62,25 @@ def add_member(db: Session, membership: GroupMember, data: MemberCreate) -> Grou
     user_id: int | None = None
     display_name = data.display_name.strip() if data.display_name else None
 
-    if data.email is not None:
+    user: User | None = None
+    if data.username is not None:
+        user = user_repository.get_by_username(db, data.username)
+        if user is None:
+            raise NotFoundError(f"No SpendWise user with the username @{data.username}")
+    elif data.email is not None:
         user = user_repository.get_by_email(db, data.email.lower())
         if user is None:
             raise NotFoundError("No SpendWise user with this email")
+
+    if user is not None:
         if group_repository.get_membership(db, group_id, user.id) is not None:
             raise ConflictError(DUPLICATE_MEMBER)
         user_id = user.id
-        display_name = display_name or user.full_name
+        if display_name is None:
+            display_name = user.full_name
+            # Two people can share a name; the handle tells them apart in this group.
+            if group_repository.find_member_by_name(db, group_id, display_name) is not None:
+                display_name = f"{user.full_name} (@{user.username})"[:100]
 
     if group_repository.find_member_by_name(db, group_id, display_name) is not None:
         raise ConflictError(DUPLICATE_NAME)

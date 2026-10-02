@@ -1,9 +1,14 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import MemberRole
 from app.models.mixins import TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class Group(TimestampMixin, Base):
@@ -39,7 +44,12 @@ class GroupMember(TimestampMixin, Base):
     )
 
     group: Mapped[Group] = relationship(back_populates="members", lazy="joined")
+    user: Mapped["User | None"] = relationship(lazy="joined")
 
     @property
     def is_guest(self) -> bool:
         return self.user_id is None
+
+    @property
+    def username(self) -> str | None:
+        return self.user.username if self.user is not None else None
