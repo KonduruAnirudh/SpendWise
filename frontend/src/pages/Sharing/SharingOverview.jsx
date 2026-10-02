@@ -4,6 +4,7 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { CreateGroupModal } from '../../features/expense-sharing/components/CreateGroupModal'
+import { SharingTotals } from '../../features/expense-sharing/components/SharingTotals'
 import { useAsync } from '../../hooks/useAsync'
 import { expenseService } from '../../services/expenseService'
 import { groupService } from '../../services/groupService'
@@ -25,15 +26,8 @@ export function SharingOverviewPage() {
 
       <Card className="mb-6 border-accent/30 bg-accent-muted/40">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Expense sharing</p>
-        <div className="mt-4 flex flex-wrap gap-8">
-          <div>
-            <p className="text-xs text-muted">You owe</p>
-            <p className="text-2xl font-semibold">{formatCurrency(summary.data?.youOwe || 0)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted">You are owed</p>
-            <p className="text-2xl font-semibold">{formatCurrency(summary.data?.youAreOwed || 0)}</p>
-          </div>
+        <div className="mt-4">
+          <SharingTotals totals={summary.data?.totals} />
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link to="/groups" className="text-sm font-medium text-accent hover:underline">
@@ -54,7 +48,7 @@ export function SharingOverviewPage() {
           <Link key={group.id} to={`/groups/${group.id}`}>
             <Card className="transition-colors hover:border-accent/40">
               <p className="font-medium">{group.name}</p>
-              <p className="mt-1 text-sm text-muted">{group.members?.length || 0} members · {formatCurrency(group.totalExpenses || 0)}</p>
+              <p className="mt-1 text-sm text-muted">{group.members?.length || 0} members · {formatCurrency(group.totalExpenses || 0, group.currency, { fractionDigits: 2 })}</p>
             </Card>
           </Link>
         ))}

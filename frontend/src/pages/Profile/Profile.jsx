@@ -29,9 +29,15 @@ export function ProfilePage() {
     personalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  function handleProfileSaved(saved) {
-    updateUser({ name: saved.name, username: saved.username })
+  // After a currency change every amount on the page is new: reload accounts and preferences too.
+  function handleProfileSaved(saved, conversion) {
+    updateUser({ name: saved.name, username: saved.username, currency: saved.currency })
     profile.refetch()
+    if (conversion) {
+      updateUser({ monthlyBudget: conversion.preferences.monthlyBudget })
+      preferences.refetch()
+      accounts.refetch()
+    }
   }
 
   // Preferences are mirrored onto the signed-in user, which the Dashboard and Transactions read.

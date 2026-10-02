@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
+import { CurrencySelect } from '../../../components/forms/CurrencySelect'
 import { Modal } from '../../../components/ui/Modal'
 import { useAuth } from '../../../context/AuthContext'
 import { useToast } from '../../../context/ToastContext'
@@ -14,6 +15,7 @@ export function CreateGroupModal({ open, onClose, onCreated }) {
   const { user } = useAuth()
   const { push } = useToast()
   const [name, setName] = useState('')
+  const [currency, setCurrency] = useState('')
   // Staged locally; saved as group members after the group exists. Usernames are checked
   // when staged, so the group isn't created with people who can't be added.
   const [members, setMembers] = useState([])
@@ -24,6 +26,7 @@ export function CreateGroupModal({ open, onClose, onCreated }) {
 
   function reset() {
     setName('')
+    setCurrency('')
     setMembers([])
     setMember(emptyMember)
     setErrors({})
@@ -78,6 +81,7 @@ export function CreateGroupModal({ open, onClose, onCreated }) {
     try {
       const group = await groupService.create({
         name: name.trim(),
+        currency: currency || user?.currency,
         members,
       })
       ;(group.failedMembers || []).forEach((failed) => push(`${failed.name} wasn't added: ${failed.message}`, 'error'))
@@ -112,7 +116,15 @@ export function CreateGroupModal({ open, onClose, onCreated }) {
       }
     >
       <div className="space-y-5">
-        <Input label="Group name" value={name} onChange={(event) => setName(event.target.value)} error={errors.groupName} />
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+          <Input label="Group name" value={name} onChange={(event) => setName(event.target.value)} error={errors.groupName} />
+          <CurrencySelect
+            name="groupCurrency"
+            label="Currency"
+            value={currency || user?.currency || 'INR'}
+            onChange={(event) => setCurrency(event.target.value)}
+          />
+        </div>
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted">Members</p>
           <p className="mb-2 text-xs text-subtle">You're added automatically as the group owner.</p>

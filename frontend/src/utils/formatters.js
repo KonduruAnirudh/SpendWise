@@ -1,11 +1,23 @@
 const currencyLocale = {
   INR: 'en-IN',
   USD: 'en-US',
+  // en-US writes "A$", so Australian and US dollars can't be confused.
+  AUD: 'en-US',
   EUR: 'en-IE',
   GBP: 'en-GB',
+  CHF: 'en-CH',
 }
 
-export function formatCurrency(amount, currency = 'INR', options = {}) {
+// The signed-in user's currency, set by AuthProvider. Personal pages (dashboard, accounts,
+// transactions, reports) format in it without passing a currency; group pages pass the
+// group's own currency explicitly (see useMoney).
+let defaultCurrency = 'INR'
+
+export function setDefaultCurrency(currency) {
+  if (currency) defaultCurrency = currency
+}
+
+export function formatCurrency(amount, currency = defaultCurrency, options = {}) {
   const value = Number(amount) || 0
   return new Intl.NumberFormat(currencyLocale[currency] || 'en-IN', {
     style: 'currency',
@@ -66,8 +78,8 @@ export function savingsRate(income, expenses) {
   return ((income - expenses) / income) * 100
 }
 
-// "₹" for INR, "$" for USD; falls back to the code itself.
-export function currencySymbol(currency = 'INR') {
+// "₹" for INR, "$" for USD, "CHF" for CHF; falls back to the code itself.
+export function currencySymbol(currency = defaultCurrency) {
   try {
     const part = new Intl.NumberFormat(currencyLocale[currency] || 'en-IN', { style: 'currency', currency })
       .formatToParts(0)

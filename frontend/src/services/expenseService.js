@@ -5,7 +5,7 @@ import { groupService } from './groupService'
 // ---------- Adapters: backend contract ↔ shapes the sharing pages use ----------
 const money = (value) => fromPaise(toPaise(value)).toFixed(2)
 
-function toUiExpense(apiExpense, groupId, groupName) {
+function toUiExpense(apiExpense, groupId, groupName, currency) {
   const splits = apiExpense.splits.map((split) => ({
     memberId: split.member_id,
     personId: split.member_id,
@@ -16,6 +16,7 @@ function toUiExpense(apiExpense, groupId, groupName) {
     id: apiExpense.id,
     groupId,
     groupName,
+    currency,
     name: apiExpense.description,
     amount: Number(apiExpense.amount),
     date: apiExpense.occurred_on,
@@ -100,23 +101,31 @@ function toUiSettlement(groupId, row, status) {
   }
 }
 
-async function listGroupExpenses(groupId, groupName) {
+async function listGroupExpenses(groupId, groupName, currency) {
   const rows = await api.get(`/groups/${groupId}/expenses`)
-  return rows.map((row) => toUiExpense(row, groupId, groupName))
+  return rows.map((row) => toUiExpense(row, groupId, groupName, currency))
 }
 
 export const expenseService = {
-  // Totals across all groups, from each group's net position for the current user.
+  // What you owe and are owed across all groups, kept apart per currency: a USD trip and an
+  // INR flat share can't be added together. Each total is summed in integer minor units.
   async getSummary() {
     const positions = await api.get('/users/me/group-balances')
-    let owe = 0
-    let owed = 0
+    const byCurrency = new Map()
     positions.forEach((position) => {
+      const total = byCurrency.get(position.currency) || { owe: 0, owed: 0 }
       const net = toPaise(position.my_net)
-      if (net < 0) owe -= net
-      else owed += net
+      if (net < 0) total.owe -= net
+      else total.owed += net
+      byCurrency.set(position.currency, total)
     })
-    return { youOwe: fromPaise(owe), youAreOwed: fromPaise(owed) }
+    return {
+      totals: [...byCurrency.entries()].map(([currency, total]) => ({
+        currency,
+        youOwe: fromPaise(total.owe),
+        youAreOwed: fromPaise(total.owed),
+      })),
+    }
   },
 
   listGroups: groupService.list,
@@ -126,7 +135,7 @@ export const expenseService = {
   async listExpenses(groupId) {
     if (groupId) return listGroupExpenses(groupId)
     const groups = await api.get('/groups')
-    const perGroup = await Promise.all(groups.map((group) => listGroupExpenses(group.id, group.name)))
+    const perGroup = await Promise.all(groups.map((group) => listGroupExpenses(group.id, group.name, group.currency)))
     return perGroup.flat().sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
   },
 

@@ -56,6 +56,24 @@ export const profileService = {
     return toUiUser(await api.patch('/users/me', { full_name: name, username }))
   },
 
+  // Converts every account and transaction on the server at today's rate. The monthly budget
+  // (still a device preference) is converted here at the same rate, so it keeps its meaning.
+  async changeCurrency(currency) {
+    const result = await api.post('/users/me/currency', { currency })
+    const saved = readJson(PREFERENCES_STORAGE_KEY)
+    if (saved.monthlyBudget) {
+      const converted = Math.round(Number(saved.monthlyBudget) * Number(result.rate) * 100) / 100
+      mergeJson(PREFERENCES_STORAGE_KEY, { monthlyBudget: converted })
+    }
+    return {
+      profile: toUiUser(result.user),
+      rate: result.rate,
+      rateDate: result.rate_date,
+      converted: result.converted,
+      preferences: pickPreferences(readJson(PREFERENCES_STORAGE_KEY)),
+    }
+  },
+
   // A wrong current password is a 400 with a message for the current-password field.
   async changePassword({ currentPassword, newPassword }) {
     await api.post('/users/me/change-password', { current_password: currentPassword, new_password: newPassword })

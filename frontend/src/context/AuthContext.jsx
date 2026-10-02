@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { AUTH_STORAGE_KEY, PREFERENCES_STORAGE_KEY } from '../utils/constants'
 import { authService } from '../services/authService'
+import { setDefaultCurrency } from '../utils/formatters'
 
 const AuthContext = createContext(null)
 
@@ -84,6 +85,9 @@ export function AuthProvider({ children }) {
     },
     [persist],
   )
+
+  // Before any page renders, so amounts on personal pages use the user's currency.
+  setDefaultCurrency(session?.user?.currency)
 
   const value = useMemo(
     () => ({

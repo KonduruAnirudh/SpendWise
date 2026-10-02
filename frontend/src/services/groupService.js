@@ -62,7 +62,7 @@ export const groupService = {
   // Creates the group, then adds members one by one. Members that fail (e.g. an email with no
   // SpendWise account) are reported back instead of failing the whole group.
   async create(payload) {
-    const detail = await api.post('/groups', { name: payload.name })
+    const detail = await api.post('/groups', { name: payload.name, currency: payload.currency })
     const failed = []
     for (const person of payload.members || []) {
       try {
@@ -75,8 +75,9 @@ export const groupService = {
   },
 
   // Owner only (403 otherwise).
-  async update(id, { name, simplifyDebts }) {
-    return api.patch(`/groups/${id}`, { name, simplify_debts: simplifyDebts })
+  // A currency change converts every expense, split and settlement in the group at today's rate.
+  async update(id, { name, simplifyDebts, currency }) {
+    return api.patch(`/groups/${id}`, { name, simplify_debts: simplifyDebts, currency })
   },
 
   async getMembers(groupId) {

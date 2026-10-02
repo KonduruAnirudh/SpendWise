@@ -86,3 +86,17 @@ export const AI_RESPONSE_STYLES = [
   { value: 'balanced', label: 'Balanced', description: 'A short answer plus a line of context.' },
   { value: 'detailed', label: 'Detailed', description: 'Breakdowns and comparisons where useful.' },
 ]
+
+// Mirrors the API's supported currencies (backend app/core/currency.py), with ISO 4217 names.
+export const CURRENCIES = [
+  { code: 'INR', name: 'Indian Rupee' },
+  { code: 'USD', name: 'US Dollar' },
+  { code: 'AUD', name: 'Australian Dollar' },
+  { code: 'EUR', name: 'Euro' },
+  { code: 'GBP', name: 'British Pound' },
+  { code: 'CHF', name: 'Swiss Franc' },
+]
+
+export function currencyName(code) {
+  return CURRENCIES.find((currency) => currency.code === code)?.name || code
+}

@@ -1,12 +1,13 @@
 import { Input } from '../../../components/ui/Input'
 import { Select } from '../../../components/ui/Select'
-import { formatCurrency } from '../../../utils/formatters'
+import { useMoney } from '../../../context/CurrencyContext'
 import { SplitMethodSelector } from './SplitMethodSelector'
 import { AdjustmentSplit, EqualSplit, ExactSplit, PercentageSplit, SharesSplit } from './SplitPanels'
 import { ReimbursementForm } from './ReimbursementForm'
 import { ItemizedExpense } from './ItemizedExpense'
 
 export function ExpenseComposer({ members, split, values, onValues, errors }) {
+  const money = useMoney()
   const set = (key, value) => onValues({ ...values, [key]: value })
 
   return (
@@ -104,7 +105,7 @@ export function ExpenseComposer({ members, split, values, onValues, errors }) {
 
       {split.method !== 'reimbursement' && split.method !== 'itemized' && split.splits.length > 0 && (
         <p className="text-xs text-subtle">
-          Total {formatCurrency(split.total)}
+          Total {money.format(split.total)}
           {split.errors.splits ? ` · ${split.errors.splits}` : ''}
         </p>
       )}

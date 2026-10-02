@@ -22,12 +22,14 @@ export function GroupCard({ group }) {
         <dl className="mt-6 grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-xs uppercase tracking-[0.14em] text-subtle">Total expenses</dt>
-            <dd className="mt-1 font-medium">{formatCurrency(group.totalExpenses)}</dd>
+            <dd className="mt-1 font-medium">{formatCurrency(group.totalExpenses, group.currency, { fractionDigits: 2 })}</dd>
           </div>
           <div>
             <dt className="text-xs uppercase tracking-[0.14em] text-subtle">Your balance</dt>
             <dd className={`mt-1 font-medium ${owed ? 'text-success' : 'text-danger'}`}>
-              {owed ? `+ ${formatCurrency(group.yourBalance)}` : `− ${formatCurrency(Math.abs(group.yourBalance))}`}
+              {owed
+                ? `+ ${formatCurrency(group.yourBalance, group.currency, { fractionDigits: 2 })}`
+                : `− ${formatCurrency(Math.abs(group.yourBalance), group.currency, { fractionDigits: 2 })}`}
             </dd>
           </div>
         </dl>

@@ -3,7 +3,10 @@ import { Lock, UserRound } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { useToast } from '../../../context/ToastContext'
+import { CurrencySelect } from '../../../components/forms/CurrencySelect'
+import { ConversionNotice, useConversionRate } from '../../currency/ConversionNotice'
 import { profileService } from '../../../services/profileService'
+import { currencyName } from '../../../utils/constants'
 import { normalizeUsername, USERNAME_RULE, validateProfileName, validateUsername } from '../../../utils/validators'
 import { ProfileSection } from './ProfileSection'
 
@@ -12,16 +15,21 @@ export const PersonalInformation = forwardRef(function PersonalInformation(
   ref,
 ) {
   const { push } = useToast()
-  const [values, setValues] = useState({ name: profile.name || '', username: profile.username || '' })
+  const initial = { name: profile.name || '', username: profile.username || '', currency: profile.currency }
+  const [values, setValues] = useState(initial)
   const [errors, setErrors] = useState({})
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const changed =
+  const detailsChanged =
     values.name.trim() !== (profile.name || '') || normalizeUsername(values.username) !== (profile.username || '')
+  const currencyChanged = Boolean(values.currency) && values.currency !== profile.currency
+  const rate = useConversionRate(editing && currencyChanged ? profile.currency : null, values.currency)
+  // A currency change can't be saved without a rate to show (and to convert with).
+  const rateReady = !currencyChanged || (rate.data?.quote === values.currency && !rate.error)
 
   function startEditing() {
-    setValues({ name: profile.name || '', username: profile.username || '' })
+    setValues(initial)
     setErrors({})
     setSaveError('')
     onEditingChange(true)
@@ -39,12 +47,20 @@ export const PersonalInformation = forwardRef(function PersonalInformation(
     setSaving(true)
     setSaveError('')
     try {
-      const saved = await profileService.updateProfile({
-        name: values.name.trim(),
-        username: normalizeUsername(values.username),
-      })
-      onSaved(saved)
-      push('Profile updated.')
+      let saved = profile
+      if (detailsChanged) {
+        saved = await profileService.updateProfile({
+          name: values.name.trim(),
+          username: normalizeUsername(values.username),
+        })
+      }
+      let conversion = null
+      if (currencyChanged) {
+        conversion = await profileService.changeCurrency(values.currency)
+        saved = conversion.profile
+      }
+      onSaved(saved, conversion)
+      push(conversion ? describeConversion(conversion, values.currency) : 'Profile updated.')
       onEditingChange(false)
     } catch (err) {
       // A taken username (409) belongs next to the username field.
@@ -68,6 +84,7 @@ export const PersonalInformation = forwardRef(function PersonalInformation(
           <dl className="grid gap-5 sm:grid-cols-2">
             <Field label="Full name" value={profile.name || <span className="text-muted">Not set</span>} />
             <Field label="Username" value={profile.username ? `@${profile.username}` : '—'} />
+            <Field label="Default currency" value={`${profile.currency} · ${currencyName(profile.currency)}`} />
             <Field
               label="Email"
               value={
@@ -121,7 +138,20 @@ export const PersonalInformation = forwardRef(function PersonalInformation(
               hint="You sign in with this email, so it can't be changed yet."
               rightSlot={<Lock className="mr-1.5 size-4 text-subtle" aria-hidden="true" />}
             />
+            <CurrencySelect
+              name="currency"
+              label="Default currency"
+              value={values.currency}
+              onChange={(event) => setValues({ ...values, currency: event.target.value })}
+              hint="Used for your accounts, transactions and new groups."
+            />
           </div>
+          <ConversionNotice
+            from={profile.currency}
+            to={values.currency}
+            rate={rate}
+            scope="All your accounts and transactions, and your monthly budget, are converted. Groups keep their own currency; a group's owner can change it."
+          />
           {saveError && (
             <p className="rounded-xl border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger" role="alert">
               {saveError}
@@ -132,8 +162,8 @@ export const PersonalInformation = forwardRef(function PersonalInformation(
               <Button type="button" variant="ghost" onClick={() => onEditingChange(false)} disabled={saving}>
                 Cancel
               </Button>
-              <Button type="submit" loading={saving} disabled={!changed}>
-                Save changes
+              <Button type="submit" loading={saving} disabled={!(detailsChanged || currencyChanged) || !rateReady}>
+                {currencyChanged ? 'Convert and save' : 'Save changes'}
               </Button>
             </div>
           </div>
@@ -150,4 +180,10 @@ function Field({ label, value }) {
       <dd className="mt-1.5 text-sm text-fg">{value}</dd>
     </div>
   )
+}
+
+function describeConversion({ converted, rate }, currency) {
+  const accounts = `${converted.accounts} account${converted.accounts === 1 ? '' : 's'}`
+  const transactions = `${converted.transactions} transaction${converted.transactions === 1 ? '' : 's'}`
+  return `Converted ${accounts} and ${transactions} to ${currencyName(currency)} (rate ${Number(Number(rate).toPrecision(4))}).`
 }

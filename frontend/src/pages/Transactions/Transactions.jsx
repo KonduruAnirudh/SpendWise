@@ -119,7 +119,7 @@ export function TransactionsPage() {
       <PageHeader
         eyebrow="Money"
         title="Transactions"
-        description="Search, filter, and keep every rupee accounted for."
+        description="Search, filter, and keep every amount accounted for."
         actions={<Button onClick={openCreate}>Add transaction</Button>}
       />
       <TransactionFilters

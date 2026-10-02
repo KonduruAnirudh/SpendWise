@@ -3,6 +3,8 @@ import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { Modal } from '../../../components/ui/Modal'
 import { Switch } from '../../../components/ui/Switch'
+import { CurrencySelect } from '../../../components/forms/CurrencySelect'
+import { ConversionNotice, useConversionRate } from '../../currency/ConversionNotice'
 import { useToast } from '../../../context/ToastContext'
 import { groupService } from '../../../services/groupService'
 
@@ -13,11 +15,14 @@ export function EditGroupModal({ open, group, onClose, onSaved }) {
 
 function EditGroupForm({ group, onClose, onSaved }) {
   const { push } = useToast()
-  const [values, setValues] = useState({ name: group.name, simplifyDebts: group.simplifyDebts })
+  const [values, setValues] = useState({ name: group.name, simplifyDebts: group.simplifyDebts, currency: group.currency })
   const [error, setError] = useState('')
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
-  const changed = values.name.trim() !== group.name || values.simplifyDebts !== group.simplifyDebts
+  const currencyChanged = values.currency !== group.currency
+  const changed = values.name.trim() !== group.name || values.simplifyDebts !== group.simplifyDebts || currencyChanged
+  const rate = useConversionRate(currencyChanged ? group.currency : null, values.currency)
+  const rateReady = !currencyChanged || (rate.data?.quote === values.currency && !rate.error)
 
   async function save(event) {
     event.preventDefault()
@@ -29,8 +34,12 @@ function EditGroupForm({ group, onClose, onSaved }) {
     setSaveError('')
     setSaving(true)
     try {
-      await groupService.update(group.id, { name: values.name.trim(), simplifyDebts: values.simplifyDebts })
-      push('Group updated.')
+      await groupService.update(group.id, {
+        name: values.name.trim(),
+        simplifyDebts: values.simplifyDebts,
+        currency: currencyChanged ? values.currency : undefined,
+      })
+      push(currencyChanged ? `Group converted to ${values.currency}.` : 'Group updated.')
       onSaved()
       onClose()
     } catch (err) {
@@ -51,8 +60,8 @@ function EditGroupForm({ group, onClose, onSaved }) {
           <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button type="submit" form="edit-group-form" loading={saving} disabled={!changed}>
-            Save changes
+          <Button type="submit" form="edit-group-form" loading={saving} disabled={!changed || !rateReady}>
+            {currencyChanged ? 'Convert and save' : 'Save changes'}
           </Button>
         </>
       }
@@ -66,6 +75,19 @@ function EditGroupForm({ group, onClose, onSaved }) {
           error={error}
           maxLength={100}
           autoFocus
+        />
+        <CurrencySelect
+          name="groupCurrency"
+          label="Currency"
+          value={values.currency}
+          onChange={(event) => setValues({ ...values, currency: event.target.value })}
+          hint="Everyone in the group sees amounts in this currency."
+        />
+        <ConversionNotice
+          from={group.currency}
+          to={values.currency}
+          rate={rate}
+          scope="Every expense, split and settlement in this group is converted, for everyone in it."
         />
         <Switch
           checked={values.simplifyDebts}

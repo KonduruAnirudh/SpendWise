@@ -1,10 +1,11 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
-import { formatCurrency } from '../../../utils/formatters'
+import { useMoney } from '../../../context/CurrencyContext'
 import { cn } from '../../../utils/cn'
 
 export function ItemizedExpense({ members, items, tax, tip, total, onItems, onTax, onTip, onAdd, errors }) {
+  const money = useMoney()
   function updateItem(id, partial) {
     onItems(items.map((item) => (item.id === id ? { ...item, ...partial } : item)))
   }
@@ -138,7 +139,7 @@ export function ItemizedExpense({ members, items, tax, tip, total, onItems, onTa
           onChange={(event) => onTip(Number(event.target.value) || 0)}
         />
       </div>
-      <p className="text-sm font-medium">Total {formatCurrency(total, 'INR', { fractionDigits: 2 })}</p>
+      <p className="text-sm font-medium">Total {money.format(total)}</p>
       {errors.splits && <p className="text-xs text-danger">{errors.splits}</p>}
     </div>
   )

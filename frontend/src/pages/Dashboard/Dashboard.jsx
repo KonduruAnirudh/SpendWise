@@ -9,6 +9,7 @@ import { ErrorState } from '../../components/ui/EmptyState'
 import { IncomeExpenseChart } from '../../components/charts/IncomeExpenseChart'
 import { CategoryDonutChart } from '../../components/charts/CategoryDonutChart'
 import { MonthlySpendingChart } from '../../components/charts/MonthlySpendingChart'
+import { SharingTotals } from '../../features/expense-sharing/components/SharingTotals'
 import { useAuth } from '../../context/AuthContext'
 import { useAsync } from '../../hooks/useAsync'
 import { analyticsService } from '../../services/analyticsService'
@@ -91,15 +92,8 @@ export function DashboardPage() {
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Expense sharing</p>
-            <div className="mt-3 flex gap-8">
-              <div>
-                <p className="text-xs text-muted">You owe</p>
-                <p className="text-xl font-semibold">{formatCurrency(sharing.data?.youOwe || 0)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted">You are owed</p>
-                <p className="text-xl font-semibold">{formatCurrency(sharing.data?.youAreOwed || 0)}</p>
-              </div>
+            <div className="mt-3">
+              <SharingTotals totals={sharing.data?.totals} size="md" />
             </div>
           </div>
           <div className="flex flex-wrap gap-2">

@@ -83,7 +83,7 @@ function FinancialPreferencesForm({ currency, initial, accounts, onSaved }) {
           readOnly
           aria-readonly="true"
           className="cursor-not-allowed text-muted"
-          hint="Set when your account was created. More currencies are planned."
+          hint="Change it under Personal information (Edit profile): your amounts are converted."
           rightSlot={<Lock className="mr-1.5 size-4 text-subtle" aria-hidden="true" />}
         />
         <Select

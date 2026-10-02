@@ -2,7 +2,8 @@ import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { formatCurrency, formatDate } from '../../../utils/formatters'
 import { toPaise } from '../../../utils/splitCalculations'
 
-const money = (amount, currency) => formatCurrency(amount, currency || 'INR', { fractionDigits: 2 })
+// The receipt's own currency (the reader may spot one that differs from the group's).
+const money = (amount, currency) => formatCurrency(amount, currency, { fractionDigits: 2 })
 
 // Shown above the itemized form while a bill draft is being reviewed. `linesTotal` is live, so the
 // check updates as the user edits lines.

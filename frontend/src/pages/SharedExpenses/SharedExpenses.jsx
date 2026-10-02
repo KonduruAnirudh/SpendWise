@@ -33,7 +33,7 @@ export function SharedExpensesPage() {
             </div>
             <div className="flex items-center gap-4">
               {expense.splitMethod === 'reimbursement' && <Badge tone="accent">Reimbursement</Badge>}
-              <p className="font-semibold">{formatCurrency(expense.amount)}</p>
+              <p className="font-semibold">{formatCurrency(expense.amount, expense.currency, { fractionDigits: 2 })}</p>
               <Link to={`/groups/${expense.groupId}`} className="text-sm text-accent hover:underline">
                 Open group
               </Link>

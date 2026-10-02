@@ -20,6 +20,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { useExpenseSplit } from '../../hooks/useExpenseSplit'
 import { useBillUpload } from '../../hooks/useBillUpload'
 import { useToast } from '../../context/ToastContext'
+import { CurrencyProvider } from '../../context/CurrencyContext'
 import { groupService } from '../../services/groupService'
 import { expenseService } from '../../services/expenseService'
 import { draftToItemizedLines } from '../../services/billService'
@@ -219,171 +220,173 @@ export function GroupDetailsPage() {
   const youAreOwed = me && me.net > 0 ? me.net : 0
 
   return (
-    <div>
-      <p className="mb-4 text-sm">
-        <Link to="/groups" className="text-muted hover:text-fg">
-          ← Groups
-        </Link>
-      </p>
-      <PageHeader
-        title={group.data.name}
-        description={`${members.length} members`}
-        actions={
-          <>
-            <Button variant="outline" onClick={openBill}>
-              Upload bill
-            </Button>
-            <Button variant="outline" onClick={() => setMemberOpen(true)}>
-              Manage members
-            </Button>
-            {group.data.isOwner && (
-              <Button variant="outline" onClick={() => setEditOpen(true)}>
-                Edit group
+    <CurrencyProvider currency={group.data.currency}>
+      <div>
+        <p className="mb-4 text-sm">
+          <Link to="/groups" className="text-muted hover:text-fg">
+            ← Groups
+          </Link>
+        </p>
+        <PageHeader
+          title={group.data.name}
+          description={`${members.length} members`}
+          actions={
+            <>
+              <Button variant="outline" onClick={openBill}>
+                Upload bill
               </Button>
-            )}
-            <Button onClick={openExpense}>Add expense</Button>
-            <Button variant="ghost" onClick={() => setDeleteOpen(true)}>
-              Delete group
-            </Button>
-          </>
-        }
-      />
+              <Button variant="outline" onClick={() => setMemberOpen(true)}>
+                Manage members
+              </Button>
+              {group.data.isOwner && (
+                <Button variant="outline" onClick={() => setEditOpen(true)}>
+                  Edit group
+                </Button>
+              )}
+              <Button onClick={openExpense}>Add expense</Button>
+              <Button variant="ghost" onClick={() => setDeleteOpen(true)}>
+                Delete group
+              </Button>
+            </>
+          }
+        />
 
-      <div className="mb-6">
-        <SelectedMembers members={members} onRemove={removeMember} />
-      </div>
-
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Card>
-          <p className="text-xs uppercase tracking-[0.14em] text-muted">Total expenses</p>
-          <p className="mt-2 text-2xl font-semibold">{money(group.data.totalExpenses)}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-[0.14em] text-muted">You owe</p>
-          <p className="mt-2 text-2xl font-semibold">{money(youOwe)}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-[0.14em] text-muted">You are owed</p>
-          <p className="mt-2 text-2xl font-semibold">{money(youAreOwed)}</p>
-        </Card>
-      </div>
-
-      <h2 className="mb-3 text-base font-semibold">Recent expenses</h2>
-      <div className="mb-8 space-y-3">
-        {(expenses.data || []).length === 0 && (
-          <EmptyState title="No expenses yet." actionLabel="Add expense" onAction={openExpense} />
-        )}
-        {(expenses.data || []).map((expense) => (
-          <Card key={expense.id} className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-medium">{expense.name}</p>
-              <p className="text-xs text-muted">
-                {formatDate(expense.date)} · {expense.splitMethod}
-                {expense.splitMethod === 'reimbursement' && expense.paidByName && expense.receivedByName
-                  ? ` · ${expense.paidByName} paid for ${expense.receivedByName}`
-                  : expense.paidByName
-                    ? ` · paid by ${expense.paidByName}`
-                    : ''}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {expense.splitMethod === 'reimbursement' && <Badge tone="accent">Reimbursement</Badge>}
-              <p className="font-semibold">{money(expense.amount)}</p>
-              <button
-                type="button"
-                onClick={() => setDeletingExpense(expense)}
-                className="rounded-lg p-1.5 text-muted hover:bg-hover hover:text-danger"
-                aria-label={`Delete ${expense.name}`}
-              >
-                <Trash2 className="size-4" />
-              </button>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <h2 className="mb-3 text-base font-semibold">Settlements</h2>
-      <GroupSettlements
-        groupName={group.data.name}
-        currency={group.data.currency}
-        simplified={group.data.simplifyDebts}
-        balances={balances.data || []}
-        settlements={settlements.data || []}
-        onSettled={refreshGroup}
-      />
-
-      <Modal
-        open={expenseOpen}
-        onClose={() => setExpenseOpen(false)}
-        title={billDraft ? 'Split this bill' : 'Add shared expense'}
-        className="sm:max-w-2xl"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setExpenseOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={saveExpense} loading={saving}>
-              Save expense
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-5">
-          {billDraft && <BillDraftNotice draft={billDraft} linesTotal={split.total} />}
-          <ExpenseComposer members={members} split={split} values={form} onValues={setForm} errors={errors} />
-        </div>
-      </Modal>
-
-      <Modal open={billOpen} onClose={closeBill} title="Upload bill" className="sm:max-w-lg">
-        <BillUploadFlow flow={{ ...bill, upload: readBill }} />
-      </Modal>
-
-      <Modal
-        open={memberOpen}
-        onClose={() => {
-          setMemberOpen(false)
-          setMemberErrors({})
-          setMemberForm(emptyMember)
-        }}
-        title="Manage members"
-        className="sm:max-w-lg"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setMemberOpen(false)}>
-              Done
-            </Button>
-            <Button onClick={addMember} loading={addingMember}>
-              Add member
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-5">
+        <div className="mb-6">
           <SelectedMembers members={members} onRemove={removeMember} />
-          <MemberForm values={memberForm} onChange={setMemberForm} errors={memberErrors} />
         </div>
-      </Modal>
 
-      <EditGroupModal open={editOpen} group={group.data} onClose={() => setEditOpen(false)} onSaved={refreshGroup} />
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <Card>
+            <p className="text-xs uppercase tracking-[0.14em] text-muted">Total expenses</p>
+            <p className="mt-2 text-2xl font-semibold">{money(group.data.totalExpenses)}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-[0.14em] text-muted">You owe</p>
+            <p className="mt-2 text-2xl font-semibold">{money(youOwe)}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-[0.14em] text-muted">You are owed</p>
+            <p className="mt-2 text-2xl font-semibold">{money(youAreOwed)}</p>
+          </Card>
+        </div>
 
-      <ConfirmDialog
-        open={Boolean(deletingExpense)}
-        onClose={() => setDeletingExpense(null)}
-        title="Delete expense"
-        description={`Delete ${deletingExpense?.name}? Balances and suggested payments will be recalculated.`}
-        confirmLabel="Delete expense"
-        onConfirm={deleteExpense}
-      />
+        <h2 className="mb-3 text-base font-semibold">Recent expenses</h2>
+        <div className="mb-8 space-y-3">
+          {(expenses.data || []).length === 0 && (
+            <EmptyState title="No expenses yet." actionLabel="Add expense" onAction={openExpense} />
+          )}
+          {(expenses.data || []).map((expense) => (
+            <Card key={expense.id} className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-medium">{expense.name}</p>
+                <p className="text-xs text-muted">
+                  {formatDate(expense.date)} · {expense.splitMethod}
+                  {expense.splitMethod === 'reimbursement' && expense.paidByName && expense.receivedByName
+                    ? ` · ${expense.paidByName} paid for ${expense.receivedByName}`
+                    : expense.paidByName
+                      ? ` · paid by ${expense.paidByName}`
+                      : ''}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {expense.splitMethod === 'reimbursement' && <Badge tone="accent">Reimbursement</Badge>}
+                <p className="font-semibold">{money(expense.amount)}</p>
+                <button
+                  type="button"
+                  onClick={() => setDeletingExpense(expense)}
+                  className="rounded-lg p-1.5 text-muted hover:bg-hover hover:text-danger"
+                  aria-label={`Delete ${expense.name}`}
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
 
-      <ConfirmDialog
-        open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        title="Delete group"
-        description={`This permanently removes ${group.data.name}, including its members, expenses, and settlements. Only the group owner can do this.`}
-        confirmLabel="Delete group"
-        loading={deleting}
-        onConfirm={deleteGroup}
-      />
-    </div>
+        <h2 className="mb-3 text-base font-semibold">Settlements</h2>
+        <GroupSettlements
+          groupName={group.data.name}
+          currency={group.data.currency}
+          simplified={group.data.simplifyDebts}
+          balances={balances.data || []}
+          settlements={settlements.data || []}
+          onSettled={refreshGroup}
+        />
+
+        <Modal
+          open={expenseOpen}
+          onClose={() => setExpenseOpen(false)}
+          title={billDraft ? 'Split this bill' : 'Add shared expense'}
+          className="sm:max-w-2xl"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setExpenseOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={saveExpense} loading={saving}>
+                Save expense
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-5">
+            {billDraft && <BillDraftNotice draft={billDraft} linesTotal={split.total} />}
+            <ExpenseComposer members={members} split={split} values={form} onValues={setForm} errors={errors} />
+          </div>
+        </Modal>
+
+        <Modal open={billOpen} onClose={closeBill} title="Upload bill" className="sm:max-w-lg">
+          <BillUploadFlow flow={{ ...bill, upload: readBill }} />
+        </Modal>
+
+        <Modal
+          open={memberOpen}
+          onClose={() => {
+            setMemberOpen(false)
+            setMemberErrors({})
+            setMemberForm(emptyMember)
+          }}
+          title="Manage members"
+          className="sm:max-w-lg"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setMemberOpen(false)}>
+                Done
+              </Button>
+              <Button onClick={addMember} loading={addingMember}>
+                Add member
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-5">
+            <SelectedMembers members={members} onRemove={removeMember} />
+            <MemberForm values={memberForm} onChange={setMemberForm} errors={memberErrors} />
+          </div>
+        </Modal>
+
+        <EditGroupModal open={editOpen} group={group.data} onClose={() => setEditOpen(false)} onSaved={refreshGroup} />
+
+        <ConfirmDialog
+          open={Boolean(deletingExpense)}
+          onClose={() => setDeletingExpense(null)}
+          title="Delete expense"
+          description={`Delete ${deletingExpense?.name}? Balances and suggested payments will be recalculated.`}
+          confirmLabel="Delete expense"
+          onConfirm={deleteExpense}
+        />
+
+        <ConfirmDialog
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          title="Delete group"
+          description={`This permanently removes ${group.data.name}, including its members, expenses, and settlements. Only the group owner can do this.`}
+          confirmLabel="Delete group"
+          loading={deleting}
+          onConfirm={deleteGroup}
+        />
+      </div>
+    </CurrencyProvider>
   )
 }

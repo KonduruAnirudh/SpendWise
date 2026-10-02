@@ -1,18 +1,19 @@
-import { formatCurrency } from '../../../utils/formatters'
+import { useMoney } from '../../../context/CurrencyContext'
 
-// Split previews show paise, because that's what the server stores.
-const money = (amount) => formatCurrency(amount, 'INR', { fractionDigits: 2 })
-
+// Previews show minor units (paise, cents), because that's what the server stores, in the
+// group's currency.
 export function EqualSplit({ splits }) {
+  const money = useMoney()
   return (
     <SplitList
       rows={splits}
-      renderValue={(row) => <span className="text-muted">{money(row.amount)}</span>}
+      renderValue={(row) => <span className="text-muted">{money.format(row.amount)}</span>}
     />
   )
 }
 
 export function ExactSplit({ splits, amounts, onChange }) {
+  const money = useMoney()
   return (
     <SplitList
       rows={splits}
@@ -20,7 +21,7 @@ export function ExactSplit({ splits, amounts, onChange }) {
         <NumberField
           value={amounts[row.personId] ?? row.amount}
           onChange={(value) => onChange(row.personId, value)}
-          suffix="₹"
+          prefix={money.symbol}
         />
       )}
     />
@@ -28,13 +29,14 @@ export function ExactSplit({ splits, amounts, onChange }) {
 }
 
 export function PercentageSplit({ splits, percents, onChange }) {
+  const money = useMoney()
   return (
     <SplitList
       rows={splits}
       renderValue={(row) => (
         <div className="flex items-center gap-3">
           <NumberField value={percents[row.personId] ?? row.percent} onChange={(value) => onChange(row.personId, value)} suffix="%" />
-          <span className="w-24 text-right text-muted">{money(row.amount)}</span>
+          <span className="w-24 text-right text-muted">{money.format(row.amount)}</span>
         </div>
       )}
     />
@@ -42,13 +44,14 @@ export function PercentageSplit({ splits, percents, onChange }) {
 }
 
 export function SharesSplit({ splits, shares, onChange }) {
+  const money = useMoney()
   return (
     <SplitList
       rows={splits}
       renderValue={(row) => (
         <div className="flex items-center gap-3">
           <NumberField value={shares[row.personId] ?? row.shares} onChange={(value) => onChange(row.personId, value)} />
-          <span className="w-24 text-right text-muted">{money(row.amount)}</span>
+          <span className="w-24 text-right text-muted">{money.format(row.amount)}</span>
         </div>
       )}
     />
@@ -56,6 +59,7 @@ export function SharesSplit({ splits, shares, onChange }) {
 }
 
 export function AdjustmentSplit({ splits, amounts, remaining, onChange }) {
+  const money = useMoney()
   return (
     <div>
       <p className="mb-2 text-xs text-subtle">
@@ -68,17 +72,17 @@ export function AdjustmentSplit({ splits, amounts, remaining, onChange }) {
             <NumberField
               value={amounts[row.personId] ?? 0}
               onChange={(value) => onChange(row.personId, value)}
-              prefix="+₹"
+              prefix={`+${money.symbol}`}
               allowNegative
             />
-            <span className="w-24 text-right text-muted">{money(row.amount)}</span>
+            <span className="w-24 text-right text-muted">{money.format(row.amount)}</span>
           </div>
         )}
       />
       <p className={`mt-3 text-sm ${remaining >= 0 ? 'text-muted' : 'text-danger'}`}>
         {remaining >= 0
-          ? `${money(remaining)} is split equally, then each extra is added.`
-          : `Adjustments exceed the total by ${money(Math.abs(remaining))}.`}
+          ? `${money.format(remaining)} is split equally, then each extra is added.`
+          : `Adjustments exceed the total by ${money.format(Math.abs(remaining))}.`}
       </p>
     </div>
   )
@@ -103,7 +107,7 @@ function SplitList({ rows, renderValue }) {
 function NumberField({ value, onChange, suffix, prefix, allowNegative = false }) {
   return (
     <label className="flex items-center gap-1">
-      {(prefix || suffix === '₹') && <span className="text-subtle">{prefix || '₹'}</span>}
+      {prefix && <span className="text-subtle">{prefix}</span>}
       <input
         type="number"
         min={allowNegative ? undefined : '0'}
