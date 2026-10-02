@@ -1,15 +1,8 @@
 import { RefreshCw } from 'lucide-react'
-import { useAsync } from '../../hooks/useAsync'
-import { fxService } from '../../services/fxService'
 import { currencyName } from '../../utils/constants'
 import { currencySymbol, formatDate } from '../../utils/formatters'
 
-// Shows the rate a currency change will use, before anything is converted. The server fetches
-// the rate again when it converts (the ECB publishes once a day, so it's the same rate).
-export function useConversionRate(from, to) {
-  return useAsync(() => (from && to && from !== to ? fxService.rate(from, to) : Promise.resolve(null)), [from, to])
-}
-
+// Shows the rate a currency change will use (see useConversionRate), before anything is converted.
 export function ConversionNotice({ from, to, rate, scope }) {
   if (!from || !to || from === to) return null
   // useAsync keeps the previous result while a new one loads; only show the matching pair.
