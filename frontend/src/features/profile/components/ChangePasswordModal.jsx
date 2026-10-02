@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/Button'
 import { Modal } from '../../../components/ui/Modal'
 import { PasswordInput } from '../../../components/ui/PasswordInput'
 import { useToast } from '../../../context/ToastContext'
-import { PROFILE_API, profileService } from '../../../services/profileService'
+import { profileService } from '../../../services/profileService'
 import { PASSWORD_RULES, validatePasswordChange } from '../../../utils/validators'
 
 const EMPTY = { currentPassword: '', newPassword: '', confirmPassword: '' }
@@ -34,15 +34,16 @@ export function ChangePasswordModal({ open, onClose }) {
     setSaving(true)
     setSubmitError('')
     try {
-      const result = await profileService.changePassword({
+      await profileService.changePassword({
         currentPassword: values.currentPassword,
         newPassword: values.newPassword,
       })
-      push(result.changed ? 'Password changed.' : "Password changes aren't connected yet. Your password was not changed.")
+      push('Password changed. Use the new one next time you sign in.')
       close()
     } catch (err) {
-      // e.g. a 400/401 for a wrong current password once the endpoint exists.
-      setSubmitError(err.message || "Your password couldn't be changed. Try again.")
+      // The server's 400 for a wrong current password belongs next to that field.
+      if (err.status === 400 && /current password/i.test(err.message)) setErrors({ currentPassword: err.message })
+      else setSubmitError(err.message || "Your password couldn't be changed. Try again.")
     } finally {
       setSaving(false)
     }
@@ -65,11 +66,6 @@ export function ChangePasswordModal({ open, onClose }) {
       }
     >
       <form id="change-password-form" className="space-y-4" onSubmit={submit} noValidate>
-        {!PROFILE_API.changePassword && (
-          <p className="rounded-xl border border-border bg-hover/60 px-3 py-2 text-sm text-muted">
-            Preview: the server doesn't support password changes yet, so nothing will be changed.
-          </p>
-        )}
         <PasswordInput
           name="currentPassword"
           label="Current password"

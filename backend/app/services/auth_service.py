@@ -11,10 +11,9 @@ from app.core.security import (
 from app.models.user import User
 from app.repositories import user_repository
 from app.schemas.user import UserCreate
-from app.services.user_service import suggest_username
+from app.services.user_service import TAKEN_USERNAME, suggest_username
 
 DUPLICATE_EMAIL = "An account with this email already exists"
-TAKEN_USERNAME = "This username is taken"
 BAD_CREDENTIALS = "Incorrect email or password"
 
 

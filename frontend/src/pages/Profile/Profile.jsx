@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { ErrorState } from '../../components/ui/EmptyState'
 import { useAuth } from '../../context/AuthContext'
@@ -24,21 +24,13 @@ export function ProfilePage() {
   const [editingPersonal, setEditingPersonal] = useState(false)
   const personalRef = useRef(null)
 
-  // Keep the signed-in user (sidebar, greetings) in step with the profile shown here.
-  const loadedName = profile.data?.name
-  useEffect(() => {
-    if (loadedName && loadedName !== user?.name) updateUser({ name: loadedName })
-    // Only when a freshly loaded name differs; updateUser itself changes on every update.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadedName])
-
   function editProfile() {
     setEditingPersonal(true)
     personalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  function handleProfileSaved(changes) {
-    updateUser(changes)
+  function handleProfileSaved(saved) {
+    updateUser({ name: saved.name, username: saved.username })
     profile.refetch()
   }
 
@@ -109,7 +101,7 @@ export function ProfilePage() {
           accounts={accounts}
           onSaved={handlePreferencesSaved}
         />
-        <SecuritySettings email={current.email} passwordLastChanged={null} onLogout={logout} />
+        <SecuritySettings email={current.email} onLogout={logout} />
         <AIAssistantPreferences preferences={preferences} onSaved={handlePreferencesSaved} />
         <DangerZone onDeleted={handleAccountDeleted} />
       </div>

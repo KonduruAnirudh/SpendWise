@@ -3,43 +3,53 @@ import { Lock, UserRound } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Input } from '../../../components/ui/Input'
 import { useToast } from '../../../context/ToastContext'
-import { PROFILE_API, profileService } from '../../../services/profileService'
-import { validateProfileName } from '../../../utils/validators'
-import { PreviewNote, ProfileSection } from './ProfileSection'
+import { profileService } from '../../../services/profileService'
+import { normalizeUsername, USERNAME_RULE, validateProfileName, validateUsername } from '../../../utils/validators'
+import { ProfileSection } from './ProfileSection'
 
 export const PersonalInformation = forwardRef(function PersonalInformation(
   { profile, editing, onEditingChange, onSaved },
   ref,
 ) {
   const { push } = useToast()
-  const [name, setName] = useState(profile.name || '')
-  const [error, setError] = useState('')
+  const [values, setValues] = useState({ name: profile.name || '', username: profile.username || '' })
+  const [errors, setErrors] = useState({})
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const changed = name.trim() !== (profile.name || '')
+  const changed =
+    values.name.trim() !== (profile.name || '') || normalizeUsername(values.username) !== (profile.username || '')
 
   function startEditing() {
-    setName(profile.name || '')
-    setError('')
+    setValues({ name: profile.name || '', username: profile.username || '' })
+    setErrors({})
     setSaveError('')
     onEditingChange(true)
   }
 
   async function save(event) {
     event.preventDefault()
-    const problem = validateProfileName(name)
-    setError(problem || '')
-    if (problem) return
+    const nextErrors = {}
+    const nameProblem = validateProfileName(values.name)
+    const usernameProblem = validateUsername(values.username)
+    if (nameProblem) nextErrors.name = nameProblem
+    if (usernameProblem) nextErrors.username = usernameProblem
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length) return
     setSaving(true)
     setSaveError('')
     try {
-      const result = await profileService.updateProfile({ userId: profile.id, name: name.trim() })
-      onSaved(result.profile)
-      push(result.savedLocally ? 'Name updated on this device.' : 'Profile updated.')
+      const saved = await profileService.updateProfile({
+        name: values.name.trim(),
+        username: normalizeUsername(values.username),
+      })
+      onSaved(saved)
+      push('Profile updated.')
       onEditingChange(false)
     } catch (err) {
-      setSaveError(err.message || "Your changes couldn't be saved. Try again.")
+      // A taken username (409) belongs next to the username field.
+      if (err.status === 409) setErrors({ username: err.message })
+      else setSaveError(err.message || "Your changes couldn't be saved. Try again.")
     } finally {
       setSaving(false)
     }
@@ -51,8 +61,7 @@ export const PersonalInformation = forwardRef(function PersonalInformation(
       id="personal-information"
       icon={UserRound}
       title="Personal information"
-      description="Your name as it appears to people in your groups."
-      preview={!PROFILE_API.updateProfile}
+      description="Your name and the username people use to add you to groups."
     >
       {!editing ? (
         <div className="space-y-5">
@@ -81,12 +90,25 @@ export const PersonalInformation = forwardRef(function PersonalInformation(
             <Input
               name="fullName"
               label="Full name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              error={error}
+              value={values.name}
+              onChange={(event) => setValues({ ...values, name: event.target.value })}
+              error={errors.name}
               maxLength={100}
               autoComplete="name"
               autoFocus
+            />
+            <Input
+              name="username"
+              label="Username"
+              placeholder="@username"
+              value={values.username}
+              onChange={(event) => setValues({ ...values, username: event.target.value.replace(/\s/g, '').toLowerCase() })}
+              error={errors.username}
+              hint={USERNAME_RULE}
+              maxLength={31}
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
             />
             <Input
               name="email"
@@ -105,11 +127,8 @@ export const PersonalInformation = forwardRef(function PersonalInformation(
               {saveError}
             </p>
           )}
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {!PROFILE_API.updateProfile && (
-              <PreviewNote>Saved on this device until profile sync is connected.</PreviewNote>
-            )}
-            <div className="flex shrink-0 gap-2 whitespace-nowrap sm:ml-auto">
+          <div className="flex justify-end">
+            <div className="flex shrink-0 gap-2 whitespace-nowrap">
               <Button type="button" variant="ghost" onClick={() => onEditingChange(false)} disabled={saving}>
                 Cancel
               </Button>

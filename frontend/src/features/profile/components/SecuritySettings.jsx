@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/Button'
 import { ChangePasswordModal } from './ChangePasswordModal'
 import { ProfileSection } from './ProfileSection'
 
-export function SecuritySettings({ email, passwordLastChanged, onLogout }) {
+export function SecuritySettings({ email, onLogout }) {
   const [changingPassword, setChangingPassword] = useState(false)
 
   return (
@@ -18,7 +18,7 @@ export function SecuritySettings({ email, passwordLastChanged, onLogout }) {
         <SettingRow
           icon={KeyRound}
           title="Password"
-          detail={`Last changed: ${passwordLastChanged || 'not recorded yet'}`}
+          detail="Change it with your current password. You stay signed in on this device."
           action={
             <Button variant="outline" size="sm" onClick={() => setChangingPassword(true)}>
               Change password
