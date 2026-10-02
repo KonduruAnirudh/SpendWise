@@ -17,8 +17,10 @@ The reasoning behind the main trade-offs is in [docs/DESIGN_DECISIONS.md](docs/D
 | **Accounts** | Bank, savings, credit card, cash and wallet accounts. Balances are **derived** (opening balance + income − expenses), never stored. |
 | **Transactions** | Add, edit, delete, search and filter. A transaction's type (income/expense) comes from its category, so it can't be inconsistent. |
 | **Categories** | 11 system categories plus your own. System categories can't be deleted; custom names are unique per user (case-insensitive). |
-| **Dashboard & analytics** | Monthly totals, month-over-month change, spending by category, 12-month trends, per-account spending, monthly reports. |
-| **Expense sharing** | Groups with registered members (by email) and guests (by name). Seven split methods, per-member balances, the fewest payments to settle everything, and recorded settlements with undo. |
+| **Dashboard & reports** | Recent activity first, then monthly totals, month-over-month change, spending by category, 8-month trends, and a monthly report per month. |
+| **Expense sharing** | Groups with registered members (added by **@username**, so the group appears in their account too) and guests (by name). Seven split methods, per-member balances, and a settle-up list that says **who owes whom** from the actual expenses (or, if the group opts in, the fewest payments overall). Owners can rename a group, switch simplification and change its currency. Recorded settlements can be undone. |
+| **Currencies** | INR, USD, AUD, EUR, GBP and CHF. Switching your currency (or a group's) converts every stored amount at the day's European Central Bank rate, shown to you before anything changes. Totals across groups are kept per currency, never added together. |
+| **Profile & settings** | Edit your name and username, change your password with your current one, pick your currency, and set device preferences: date format, default account, income tracking, monthly budget and theme. |
 | **Bill upload** | Photograph a receipt (or upload a PDF) in a group. A vision model reads it into a draft, which pre-fills an itemized expense for you to check, assign and save. Nothing is saved until you confirm. |
 | **AI assistant** | Ask things like *"What were my biggest expenses this month?"*. The model answers by calling read-only tools over your data, and the UI shows which tools it used. |
 
@@ -156,7 +158,7 @@ python -m scripts.seed_demo                              # random password, prin
 DEMO_PASSWORD='choose-your-own' python -m scripts.seed_demo
 ```
 
-The script creates a demo user and a second registered user (both on the reserved `example.com` domain), a "Goa Trip" group that uses all seven split methods, and a "Flatmates" group. Re-running it replaces only the demo users' data.
+The script creates a demo user (`@demo`) and a second registered user (`@priya`), both on the reserved `example.com` domain, a "Goa Trip" group that uses all seven split methods, and a "Flatmates" group. Re-running it replaces only the demo users' data.
 
 ---
 
@@ -175,6 +177,7 @@ The script creates a demo user and a second registered user (both on the reserve
 | `LLM_MODEL` | `qwen3:8b` | model for the chat assistant (and for text PDFs) |
 | `LLM_VISION_MODEL` | `qwen3-vl:8b-instruct` | image-capable model that reads bill photos |
 | `CORS_ORIGINS` | `http://localhost:5173` | comma-separated allowed origins |
+| `FX_API_URL` | `https://api.frankfurter.dev/v1` *(default)* | exchange rates for currency conversion (ECB reference rates, no key needed) |
 | `DEMO_PASSWORD` | *(optional)* | used only by `scripts/seed_demo.py`; if unset, a random password is generated and printed |
 
 Settings are loaded with pydantic-settings and validated at startup, so a missing variable fails immediately rather than at the first request.
@@ -195,17 +198,18 @@ Interactive docs are generated from the code: **http://localhost:8000/docs** (Sw
 | Resource | Endpoints |
 |---|---|
 | Health | `GET /health` (503 if the database is down) |
-| Auth | `POST /auth/register`, `POST /auth/login` (OAuth2 form: `username`, `password`) |
-| Users | `GET /users/me`, `GET /users/me/group-balances` |
+| Auth | `POST /auth/register` (optional `username`; one is derived from the email otherwise), `POST /auth/login` (OAuth2 form: `username` = your email, `password`) |
+| Users | `GET/PATCH /users/me` (name, username), `POST /users/me/change-password`, `POST /users/me/currency` (converts your accounts and transactions), `GET /users/lookup?username=` (exact match only), `GET /users/me/group-balances` |
 | Accounts | `GET/POST /accounts`, `GET/PATCH/DELETE /accounts/{id}` |
 | Categories | `GET /categories?type=`, `POST /categories`, `DELETE /categories/{id}` |
 | Transactions | `GET /transactions` (filters + `limit`/`offset`), `POST`, `GET/PATCH/DELETE /transactions/{id}` |
 | Dashboard | `GET /dashboard/summary?month=YYYY-MM`, `GET /dashboard/trends?months=&end_month=` |
-| Groups | `GET/POST /groups`, `GET/DELETE /groups/{id}`, `GET/POST /groups/{id}/members`, `DELETE /groups/{id}/members/{member_id}` |
+| Groups | `GET/POST /groups`, `GET/PATCH/DELETE /groups/{id}` (PATCH: name, `simplify_debts`, currency; owner only), `GET/POST /groups/{id}/members` (`{username}` or a guest's `{display_name}`), `DELETE /groups/{id}/members/{member_id}` |
 | Group expenses | `GET/POST /groups/{id}/expenses`, `GET/DELETE /groups/{id}/expenses/{expense_id}` |
 | Balances & settlements | `GET /groups/{id}/balances`, `GET /groups/{id}/settlements/suggested`, `GET/POST /groups/{id}/settlements`, `DELETE /groups/{id}/settlements/{settlement_id}` |
 | Bills | `POST /groups/{id}/bills/parse` (multipart `file`) → an editable draft; nothing is saved |
 | AI | `POST /ai/chat`, `GET /ai/conversations`, `GET /ai/conversations/{id}/messages`, `DELETE /ai/conversations/{id}` |
+| Exchange rates | `GET /fx/rate?base=&quote=` (signed in) |
 
 Conventions: money is sent and returned as **strings** (`"1500.00"`) so no precision is lost in JSON; errors are `{"detail": "..."}`.
 
@@ -217,11 +221,13 @@ Conventions: money is sent and returned as **strings** (`"1500.00"`) so no preci
 
 - **Authentication** (who you are): `POST /auth/login` checks the Argon2 hash and returns a JWT (HS256, `sub` = user id, 60-minute expiry). The frontend stores it and sends it as a bearer token. On a 401, the client clears the session and returns to the login page.
 - **Authorization** (what you can touch): the `CurrentUser` dependency resolves the user from the token, and **every repository query is filtered by `user_id`** (or by group membership). Another user's resource returns **404, not 403**, so the API doesn't even confirm it exists.
-- Group routes use a `GroupMembership` dependency: you must be a member to see a group, and only the owner can remove members or delete the group.
+- Group routes use a `GroupMembership` dependency: you must be a member to see a group, and only the owner can edit it, remove members or delete it.
+- **Usernames** identify people (names aren't unique): lowercase, 3–30 characters, unique. Adding `@priya` to a group links her account, so the group appears in her list. The lookup endpoint is exact-match only, so it can't be used to list who uses SpendWise.
+- **Changing your password** requires the current one. A wrong current password is a **400, not a 401**: you're signed in, and the frontend treats 401 as "session expired".
 
 ### Money
 
-`NUMERIC(12,2)` in PostgreSQL, `Decimal` in Python, strings in JSON. Splitting converts to **integer paise** so every share is exact.
+`NUMERIC(12,2)` in PostgreSQL, `Decimal` in Python, strings in JSON. Splitting converts to **integer minor units** (paise, cents, pence, rappen) so every share is exact. All six supported currencies have two decimal places, so the same arithmetic works for each.
 
 ### Expense splitting
 
@@ -244,7 +250,7 @@ The frontend runs the **same algorithm** for its live preview (verified identica
 ### Balances and settling up
 
 - Each member's **net** = paid − share + settlements sent − settlements received. Nets always sum to zero.
-- **Suggested payments** are computed live, never stored: a greedy algorithm repeatedly matches the largest debtor with the largest creditor (two heaps), which gives at most *n − 1* payments.
+- **Suggested payments** are computed live, never stored. By default they're **pairwise**: for every pair of members, what each owes the other from the expenses is netted, then recorded settlements are applied, so you only ever pay someone you actually shared a cost with. A group can opt in to **simplify debts**: a greedy algorithm repeatedly matches the largest debtor with the largest creditor (two heaps), giving at most *n − 1* payments, possibly between people who never shared a bill. Either way, making every suggested payment brings every balance to exactly zero, and the server checks that.
 - **Recorded settlements** are facts. Undoing one means deleting it, and the balances recompute.
 - Splits and settlements reference `group_members.id`, not `users.id`. Guests are members without a user, and groups are isolated from each other by construction.
 
@@ -297,6 +303,13 @@ photo/PDF ─► size check (5 MB → 413) ─► real type from magic bytes (JP
 
   Add your own photos to a folder with a `truth.json` to evaluate on real receipts; keep them out of the repository.
 
+### Currencies and exchange rates
+
+- **Rates** come from an `FxProvider` (same pattern as the LLM provider): the Frankfurter API serves the European Central Bank's daily reference rates, which are published against the euro. Other pairs are crossed through the euro (INR→GBP = EUR→GBP ÷ EUR→INR), because the API's own cross rates are rounded to 5 decimal places. Tests inject fixed rates, so they never touch the network.
+- **Your currency** (`POST /users/me/currency`): every account opening balance and transaction is converted in one database transaction, rounded half-up to 2 decimals (and never below 0.01, since amounts must stay positive). The UI shows the rate in both directions before you confirm.
+- **A group's currency** belongs to the group, because everyone in it shares the numbers; only its owner can change it. Each expense is converted, then its splits are re-allocated from the converted total by largest remainder, so they still add up exactly and balances still sum to zero. The rate is fetched before anything changes, so a failure leaves the group untouched.
+- Rounding is per amount, so converting back doesn't always return the exact original numbers, and a balance can move by a few cents; the UI says so up front.
+
 ### Frontend integration
 
 The frontend started as a mock-driven UI. It was connected one feature at a time, with each service switching from mock to live behind a flag, and the mocks were deleted once everything was live. Each service has an **adapter** (`toUiAccount`, `toUiTransaction`, …) that translates the API contract into the shapes the pages render, so the backend's naming never leaks into the components.
@@ -306,12 +319,13 @@ The frontend started as a mock-driven UI. It was connected one feature at a time
 ## 6. Testing
 
 ```bash
-cd backend && python -m pytest        # 167 tests, ~25 s
+cd backend && python -m pytest        # 223 tests, ~25 s
 cd frontend && npm run lint && npm run build
 ```
 
 - **API tests** go through FastAPI's `TestClient` against the real PostgreSQL test database: auth, ownership (404 for other users' data), validation, business-rule errors (403/409/400), and the happy paths of each resource.
-- **Unit tests** cover the pure split engine and the debt-simplification algorithm.
+- **Unit tests** cover the pure split engine, the pairwise and simplified settle-up algorithms (including that every suggested payment set clears all balances), and the exchange-rate client (with a mocked HTTP transport).
+- **Fake exchange rates:** every test client gets a fixed-rate provider, so currency tests are exact and offline; one can be switched off to test the "rates unavailable" path (503, nothing converted).
 - **Fake LLM:** AI and bill tests replace the provider with a scripted one via `app.dependency_overrides`, so they're deterministic and need no model.
 - **Bill upload tests** cover the size limit (413), a disguised file type (415), non-members (404), downscaling, invalid model JSON (retry, then 502), reconciliation warnings, text and scanned PDFs, and an unreachable model (503); unit tests cover magic-byte detection, amount parsing and reconciliation.
 - **Migration test:** builds the schema with `alembic upgrade head`, compares it to the models with `compare_metadata`, then downgrades to base. It exists because the AI tables once had models but no migration: every API test passed, since tests create tables directly from the models, while the real database was missing them.
@@ -337,8 +351,8 @@ This is an MVP: correct, tested, and honest about what it doesn't do. Unsupporte
 
 | Area | Improvement |
 |---|---|
-| Auth | Short-lived access tokens + httpOnly refresh cookie (instead of `localStorage`), password reset by email, profile editing, rate limiting on login |
-| Data | Multi-currency with exchange rates; category editing and sub-categories; CSV/PDF statement import |
+| Auth | Short-lived access tokens + httpOnly refresh cookie (instead of `localStorage`), revoking other sessions when the password changes, password reset by email, email change with verification, rate limiting on login |
+| Data | Per-transaction currencies with historical rates (today a whole account converts at one rate), an audit log of conversions; server-side preferences; category editing and sub-categories; CSV/PDF statement import |
 | API | A `GET /groups` summary that returns member counts and totals (the UI currently loads each group: N+1 requests); server-side pagination in the transactions UI; `spending_by_account` in the dashboard summary (currently grouped client-side for one chart) |
 | AI | Streaming responses; an evaluation set of questions with expected tool calls and answers; caching of repeated questions |
 | Operations | Deployment (e.g. containers on ECS or App Runner with RDS PostgreSQL), managed secrets, structured logging and metrics, backups |

@@ -30,7 +30,7 @@ Short records of the decisions that shape SpendWise: what was decided, why, what
 
 ## 4. Splits reference group members, not users
 
-**Decision.** Expenses, splits and settlements point at `group_members.id`. A member is either a registered user (added by email) or a guest (just a name, `user_id` NULL).
+**Decision.** Expenses, splits and settlements point at `group_members.id`. A member is either a registered user (added by username; see decision 15) or a guest (just a name, `user_id` NULL).
 
 **Why.** Guests become possible, and groups are isolated by construction: a member of one group can't appear in another's expenses.
 
@@ -117,3 +117,29 @@ On two real photos (a crumpled 2015 restaurant bill and a CC0 photo of a 2026 bi
 **Decision.** The demo users use the reserved `example.com` domain (RFC 2606). The seed script reads `DEMO_PASSWORD` or generates a random one and prints it. Nothing in the frontend bundle or the docs contains a password.
 
 **Context.** An earlier version shipped a demo password in the frontend constants and the READMEs, and a secret scanner flagged it.
+
+## 15. People are identified by a unique username, not a name
+
+**Decision.** Every account has a lowercase `@username` (3–30 characters). Groups add registered people by username; guests are added by name. API clients that don't send one at sign-up get one derived from the email, and the migration backfilled existing users the same way.
+
+**Why.** Names aren't unique, and matching "Rahul" to an account would pick the wrong person. An email works but is private; a handle is meant to be shared. `GET /users/lookup` is exact-match only, so it confirms a handle you already know without letting anyone browse users.
+
+## 16. Settle up is pairwise by default; simplifying debts is opt-in
+
+**Decision.** Suggested payments net each pair's shares in both directions and then apply recorded settlements. A group can switch on `simplify_debts` to use the greedy fewest-payments algorithm instead.
+
+**Context.** The first version always simplified. In a group where A paid for food and B for the room, it told C to pay A for B's room. Every total was right, but the payments didn't match who paid for what, and users read that as a bug. Pairwise suggestions are what people expect; simplification saves payments in big groups, so it stays available. Both are checked to clear every balance exactly.
+
+## 17. Changing currency converts the stored amounts
+
+**Decision.** Switching currency converts amounts at the day's ECB reference rate instead of relabelling them. Your accounts and transactions convert together; a group has its own currency, which only its owner can change. Totals across groups are shown per currency.
+
+**Why.** Relabelling ₹45,000 as $45,000 would be wrong. Groups are shared, so one member's preference can't rewrite everyone's numbers. Rates are crossed through the euro for precision. Each amount is rounded on its own, and expense splits are re-allocated from the converted total by largest remainder, so splits still add up and balances still sum to zero.
+
+**Trade-off.** One rate for all history is an approximation. Production would store each transaction's original currency with a historical rate, and keep an audit log of conversions.
+
+## 18. A wrong current password is a 400, not a 401
+
+**Decision.** `POST /users/me/change-password` returns 400 when the current password is wrong.
+
+**Why.** 401 means "your session isn't valid", and the frontend signs the user out on it. Here the user is signed in; only what they typed is wrong, and the form should say so next to the field.
