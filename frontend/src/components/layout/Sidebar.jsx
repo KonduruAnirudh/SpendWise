@@ -1,10 +1,9 @@
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
   ArrowLeftRight,
   Wallet,
   Shapes,
-  PieChart,
   Newspaper,
   Users,
   Split,
@@ -26,7 +25,11 @@ import { useTheme } from '../../context/ThemeContext'
 const NAV = [
   {
     label: 'Overview',
-    items: [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+    items: [
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      // Month-by-month recap: sits with the dashboard, since both summarise your money.
+      { to: '/reports', label: 'Monthly reports', icon: Newspaper },
+    ],
   },
   {
     label: 'Money',
@@ -34,13 +37,6 @@ const NAV = [
       { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
       { to: '/accounts', label: 'Accounts', icon: Wallet },
       { to: '/categories', label: 'Categories', icon: Shapes },
-    ],
-  },
-  {
-    label: 'Analytics',
-    items: [
-      { to: '/analytics', label: 'Analytics', icon: PieChart },
-      { to: '/reports', label: 'Reports', icon: Newspaper },
     ],
   },
   {
@@ -71,7 +67,14 @@ export function Sidebar({ collapsed, onNavigate }) {
       )}
     >
       <div className={cn('flex h-16 items-center border-b border-border px-4', collapsed && 'justify-center px-2')}>
-        <Logo compact={collapsed} />
+        <Link
+          to="/dashboard"
+          onClick={onNavigate}
+          aria-label="SpendWise home"
+          className="rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+        >
+          <Logo compact={collapsed} />
+        </Link>
       </div>
 
       <nav className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4">

@@ -24,9 +24,6 @@ const AccountsPage = lazy(() =>
 const CategoriesPage = lazy(() =>
   import('../pages/Categories/Categories').then((m) => ({ default: m.CategoriesPage })),
 )
-const AnalyticsPage = lazy(() =>
-  import('../pages/Analytics/Analytics').then((m) => ({ default: m.AnalyticsPage })),
-)
 const ReportsPage = lazy(() => import('../pages/Reports/Reports').then((m) => ({ default: m.ReportsPage })))
 const GroupsPage = lazy(() => import('../pages/Groups/Groups').then((m) => ({ default: m.GroupsPage })))
 const GroupDetailsPage = lazy(() =>
@@ -79,7 +76,8 @@ export function AppRoutes() {
                 />
               }
             />
-            <Route path="/analytics" element={<AnalyticsPage />} />
+            {/* Analytics was folded into the dashboard; keep old links working. */}
+            <Route path="/analytics" element={<Navigate to="/dashboard" replace />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/groups" element={<GroupsPage />} />
             <Route path="/groups/:groupId" element={<GroupDetailsPage />} />

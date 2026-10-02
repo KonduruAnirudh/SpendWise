@@ -14,7 +14,7 @@ export function ReportsPage() {
 
   return (
     <div>
-      <PageHeader eyebrow="Analytics" title="Monthly reports" description="A quiet recap of each month." />
+      <PageHeader eyebrow="Overview" title="Monthly reports" description="A quiet recap of each month." />
       {reports.data.length === 0 && <EmptyState title="No activity in the last six months." />}
       <div className="grid gap-4 md:grid-cols-2">
         {reports.data.map((report) => (

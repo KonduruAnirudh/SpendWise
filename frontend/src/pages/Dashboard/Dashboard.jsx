@@ -43,7 +43,7 @@ export function DashboardPage() {
 
   const { summary, monthlySeries, categorySpending, recentTransactions } = dashboard.data
   const categoryName = (id) => categories.data?.find((item) => item.id === id)?.name || 'Other'
-  const recent = (recentTransactions || []).slice(0, 4)
+  const recent = (recentTransactions || []).slice(0, 5)
   const tracking = user?.incomeTracking
   const showIncome = tracking === 'regular' || (tracking === 'occasional' && summary.income > 0)
   const availableFunds = (accounts.data || [])
@@ -116,11 +116,69 @@ export function DashboardPage() {
         </div>
       </Card>
 
+      {/* Recent activity first: it's what people check most; the charts follow. */}
+      <Card className="mb-6">
+        <CardHeader
+          title="Recent transactions"
+          action={
+            <Link to="/transactions" className="text-sm text-accent hover:underline">
+              View all transactions →
+            </Link>
+          }
+        />
+        <div className="grid gap-6 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            {recent.length === 0 ? (
+              <p className="text-sm text-muted">No transactions yet.</p>
+            ) : (
+              <ul className="space-y-3">
+                {recent.map((txn) => (
+                  <li key={txn.id} className="flex items-center justify-between gap-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{txn.description}</p>
+                      <p className="text-xs text-muted">
+                        {categoryName(txn.categoryId)} · {formatDate(txn.date, user?.dateFormat)}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex shrink-0 items-center gap-1 font-medium ${txn.type === 'income' ? 'text-success' : ''}`}
+                    >
+                      {txn.type === 'income' ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
+                      {txn.type === 'income' ? '+' : '−'} {formatCurrency(txn.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="lg:col-span-2 lg:border-l lg:border-border lg:pl-6">
+            <p className="mb-3 text-xs uppercase tracking-[0.14em] text-subtle">Top categories this month</p>
+            {categorySpending.length === 0 ? (
+              <p className="text-sm text-muted">No spending this month.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {categorySpending.slice(0, 4).map((item) => (
+                  <li key={item.name} className="flex justify-between gap-3">
+                    <span className="text-muted">{item.name}</span>
+                    <span>{formatCurrency(item.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </Card>
+
       <div className="mb-6 grid gap-4 xl:grid-cols-5">
         <Card className="xl:col-span-3">
           <CardHeader
             title={showIncome ? 'Income vs expenses' : 'Monthly spending'}
             description="Last eight months"
+            action={
+              <Link to="/reports" className="text-sm text-accent hover:underline">
+                Monthly reports →
+              </Link>
+            }
           />
           {showIncome ? (
             <IncomeExpenseChart data={monthlySeries} />
@@ -134,51 +192,12 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-5">
-        {showIncome && (
-          <Card className="xl:col-span-3">
-            <CardHeader title="Monthly spending" />
-            <MonthlySpendingChart data={monthlySeries} />
-          </Card>
-        )}
-        <Card className={showIncome ? 'xl:col-span-2' : 'xl:col-span-5'}>
-          <CardHeader
-            title="Recent transactions"
-            action={
-              <Link to="/transactions" className="text-sm text-accent hover:underline">
-                View all transactions →
-              </Link>
-            }
-          />
-          <ul className="space-y-3">
-            {recent.map((txn) => (
-              <li key={txn.id} className="flex items-center justify-between gap-3 text-sm">
-                <div>
-                  <p className="font-medium">{txn.description}</p>
-                  <p className="text-xs text-muted">
-                    {categoryName(txn.categoryId)} · {formatDate(txn.date, user?.dateFormat)}
-                  </p>
-                </div>
-                <span className={`inline-flex items-center gap-1 font-medium ${txn.type === 'income' ? 'text-success' : ''}`}>
-                  {txn.type === 'income' ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
-                  {txn.type === 'income' ? '+' : '−'} {formatCurrency(txn.amount)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-6">
-            <p className="mb-3 text-xs uppercase tracking-[0.14em] text-subtle">Top categories</p>
-            <ul className="space-y-2 text-sm">
-              {categorySpending.slice(0, 4).map((item) => (
-                <li key={item.name} className="flex justify-between">
-                  <span className="text-muted">{item.name}</span>
-                  <span>{formatCurrency(item.amount)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+      {showIncome && (
+        <Card>
+          <CardHeader title="Monthly spending" />
+          <MonthlySpendingChart data={monthlySeries} />
         </Card>
-      </div>
+      )}
     </div>
   )
 }
