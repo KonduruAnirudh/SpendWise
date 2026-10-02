@@ -22,7 +22,8 @@ export function SettlementsPage() {
   if (groups.loading) return <SkeletonCard />
   if (groups.error) return <ErrorState message="Unable to load groups." onRetry={groups.refetch} />
 
-  const selectedGroup = (groups.data || []).find((group) => group.id === selectedId)
+  // The <select> gives back a string id; group ids are numbers.
+  const selectedGroup = (groups.data || []).find((group) => String(group.id) === String(selectedId))
 
   return (
     <div>
@@ -56,6 +57,8 @@ export function SettlementsPage() {
           ) : (
             <GroupSettlements
               groupName={selectedGroup?.name}
+              currency={selectedGroup?.currency}
+              simplified={selectedGroup?.simplifyDebts}
               balances={balances.data || []}
               settlements={settlements.data || []}
               onSettled={() => {

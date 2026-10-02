@@ -15,6 +15,7 @@ import { MemberForm } from '../../features/expense-sharing/components/MemberForm
 import { GroupSettlements } from '../../features/expense-sharing/components/GroupSettlements'
 import { BillUploadFlow } from '../../features/expense-sharing/components/BillUploadFlow'
 import { BillDraftNotice } from '../../features/expense-sharing/components/BillDraftNotice'
+import { EditGroupModal } from '../../features/expense-sharing/components/EditGroupModal'
 import { useAsync } from '../../hooks/useAsync'
 import { useExpenseSplit } from '../../hooks/useExpenseSplit'
 import { useBillUpload } from '../../hooks/useBillUpload'
@@ -26,7 +27,6 @@ import { formatCurrency, formatDate } from '../../utils/formatters'
 import { emptyMember, validateMember, validateSharedExpense } from '../../utils/validators'
 
 const EMPTY_MEMBERS = []
-const money = (amount) => formatCurrency(amount, 'INR', { fractionDigits: 2 })
 
 export function GroupDetailsPage() {
   const { groupId } = useParams()
@@ -42,6 +42,7 @@ export function GroupDetailsPage() {
   const [billDraft, setBillDraft] = useState(null)
   const billOpenRef = useRef(false)
   const [memberOpen, setMemberOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deletingExpense, setDeletingExpense] = useState(null)
@@ -211,6 +212,7 @@ export function GroupDetailsPage() {
   if (group.loading || expenses.loading) return <SkeletonCard />
   if (group.error || !group.data) return <ErrorState message="Unable to load this group." onRetry={group.refetch} />
 
+  const money = (amount) => formatCurrency(amount, group.data.currency, { fractionDigits: 2 })
   // Balances are per group member (not per user); the API marks which member is "me".
   const me = (balances.data || []).find((item) => item.isMe)
   const youOwe = me && me.net < 0 ? Math.abs(me.net) : 0
@@ -234,6 +236,11 @@ export function GroupDetailsPage() {
             <Button variant="outline" onClick={() => setMemberOpen(true)}>
               Manage members
             </Button>
+            {group.data.isOwner && (
+              <Button variant="outline" onClick={() => setEditOpen(true)}>
+                Edit group
+              </Button>
+            )}
             <Button onClick={openExpense}>Add expense</Button>
             <Button variant="ghost" onClick={() => setDeleteOpen(true)}>
               Delete group
@@ -298,6 +305,8 @@ export function GroupDetailsPage() {
       <h2 className="mb-3 text-base font-semibold">Settlements</h2>
       <GroupSettlements
         groupName={group.data.name}
+        currency={group.data.currency}
+        simplified={group.data.simplifyDebts}
         balances={balances.data || []}
         settlements={settlements.data || []}
         onSettled={refreshGroup}
@@ -354,6 +363,8 @@ export function GroupDetailsPage() {
           <MemberForm values={memberForm} onChange={setMemberForm} errors={memberErrors} />
         </div>
       </Modal>
+
+      <EditGroupModal open={editOpen} group={group.data} onClose={() => setEditOpen(false)} onSaved={refreshGroup} />
 
       <ConfirmDialog
         open={Boolean(deletingExpense)}

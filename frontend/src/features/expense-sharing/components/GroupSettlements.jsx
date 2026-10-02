@@ -7,16 +7,16 @@ import { useToast } from '../../../context/ToastContext'
 import { expenseService } from '../../../services/expenseService'
 import { formatCurrency, formatDate } from '../../../utils/formatters'
 
-const money = (amount) => formatCurrency(amount, 'INR', { fractionDigits: 2 })
-
 // net = paid − share + settlements sent − settlements received (computed on the server).
-function describeNet(net) {
+function describeNet(net, money) {
   if (net > 0) return { text: `gets back ${money(net)}`, tone: 'text-success' }
   if (net < 0) return { text: `owes ${money(Math.abs(net))}`, tone: 'text-danger' }
   return { text: 'is settled up', tone: 'text-muted' }
 }
 
-export function GroupSettlements({ groupName, balances, settlements, onSettled }) {
+// `simplified` mirrors the group's "Simplify debts" setting, which decides how the server suggests payments.
+export function GroupSettlements({ groupName, currency, simplified, balances, settlements, onSettled }) {
+  const money = (amount) => formatCurrency(amount, currency, { fractionDigits: 2 })
   const { push } = useToast()
   const [pending, setPending] = useState(null)
   const [undoing, setUndoing] = useState(null)
@@ -49,7 +49,7 @@ export function GroupSettlements({ groupName, balances, settlements, onSettled }
         ) : (
           <ul className="space-y-3 text-sm">
             {balances.map((item) => {
-              const { text, tone } = describeNet(item.net)
+              const { text, tone } = describeNet(item.net, money)
               return (
                 <li key={item.memberId} className="flex justify-between gap-3">
                   <span className="text-muted">
@@ -67,7 +67,11 @@ export function GroupSettlements({ groupName, balances, settlements, onSettled }
       <Card>
         <CardHeader
           title="Settle up"
-          description="The fewest payments that clear every balance. Record one when it's been paid."
+          description={
+            simplified
+              ? 'Debts are simplified into the fewest payments. Record one when it has been paid.'
+              : 'Who owes whom, based on who paid for what. Record a payment when it has been made.'
+          }
         />
         {!open.length ? (
           <EmptyState title="Everyone is settled up." description="New shared expenses will show suggested payments here." />

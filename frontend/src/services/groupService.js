@@ -20,7 +20,9 @@ function toUiGroup(detail, expenses = [], myNet = null) {
     id: detail.id,
     name: detail.name,
     currency: detail.currency,
+    simplifyDebts: detail.simplify_debts,
     myMemberId: detail.my_member_id,
+    isOwner: detail.my_role === 'owner',
     members: detail.members.map(toUiMember),
     // Display-only totals, summed in integer paise.
     totalExpenses: fromPaise(expenses.reduce((sum, expense) => sum + toPaise(expense.amount), 0)),
@@ -70,6 +72,11 @@ export const groupService = {
       }
     }
     return { ...(await loadGroup(detail.id, 0)), failedMembers: failed }
+  },
+
+  // Owner only (403 otherwise).
+  async update(id, { name, simplifyDebts }) {
+    return api.patch(`/groups/${id}`, { name, simplify_debts: simplifyDebts })
   },
 
   async getMembers(groupId) {
