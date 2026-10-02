@@ -1,8 +1,11 @@
 import re
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, EmailStr, Field
+
+from app.core.currency import CurrencyCode
 
 USERNAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]{2,29}$")
 USERNAME_RULE = "Usernames are 3 to 30 characters: lowercase letters, numbers and underscores, starting with a letter"
@@ -28,7 +31,7 @@ class UserCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=100)
     # Optional for API clients: one is generated from the email when it's left out.
     username: Username | None = None
-    currency: str = Field(default="INR", pattern=r"^[A-Z]{3}$")
+    currency: CurrencyCode = "INR"
 
 
 class UserUpdate(BaseModel):
@@ -59,3 +62,14 @@ class UserLookup(BaseModel):
 
     username: str
     full_name: str
+
+
+class CurrencyChange(BaseModel):
+    currency: CurrencyCode
+
+
+class CurrencyChangeResult(BaseModel):
+    user: UserResponse
+    rate: Decimal  # 1 old currency = rate new currency
+    rate_date: date
+    converted: dict[str, int]

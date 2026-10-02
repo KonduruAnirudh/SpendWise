@@ -1,10 +1,21 @@
-from fastapi import APIRouter, Query, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query, status
 
 from app.core.dependencies import CurrentUser, DbSession
+from app.fx import FxProvider, get_fx_provider
 from app.models.user import User
 from app.schemas.settlement import MyGroupPosition
-from app.schemas.user import PasswordChange, UserLookup, UserResponse, UserUpdate, normalize_username
-from app.services import balance_service, user_service
+from app.schemas.user import (
+    CurrencyChange,
+    CurrencyChangeResult,
+    PasswordChange,
+    UserLookup,
+    UserResponse,
+    UserUpdate,
+    normalize_username,
+)
+from app.services import balance_service, currency_service, user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -23,6 +34,23 @@ def update_me(data: UserUpdate, current_user: CurrentUser, db: DbSession) -> Use
 @router.post("/me/change-password", status_code=status.HTTP_204_NO_CONTENT)
 def change_password(data: PasswordChange, current_user: CurrentUser, db: DbSession) -> None:
     user_service.change_password(db, current_user, data)
+
+
+# A separate action, not a PATCH field: it converts every account and transaction.
+@router.post("/me/currency", response_model=CurrencyChangeResult)
+def change_currency(
+    data: CurrencyChange,
+    current_user: CurrentUser,
+    db: DbSession,
+    fx: Annotated[FxProvider, Depends(get_fx_provider)],
+) -> CurrencyChangeResult:
+    result = currency_service.change_user_currency(db, current_user, data.currency, fx)
+    return CurrencyChangeResult(
+        user=UserResponse.model_validate(current_user),
+        rate=result.quote.rate,
+        rate_date=result.quote.date,
+        converted=result.converted,
+    )
 
 
 @router.get("/me/group-balances", response_model=list[MyGroupPosition])

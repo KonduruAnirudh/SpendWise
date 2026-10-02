@@ -2,11 +2,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import BadRequestError, ConflictError, ForbiddenError, NotFoundError
+from app.fx import FxProvider
 from app.models.enums import MemberRole
 from app.models.group import Group, GroupMember
 from app.models.user import User
 from app.repositories import group_repository, user_repository
 from app.schemas.group import GroupCreate, GroupDetail, GroupSummary, GroupUpdate, MemberCreate, MemberResponse
+from app.services import currency_service
 
 DUPLICATE_MEMBER = "This person is already a member of the group"
 DUPLICATE_NAME = "A member with this name already exists in the group"
@@ -60,9 +62,13 @@ def get_group_detail(membership: GroupMember) -> GroupDetail:
     )
 
 
-def update_group(db: Session, membership: GroupMember, data: GroupUpdate) -> GroupDetail:
+def update_group(db: Session, membership: GroupMember, data: GroupUpdate, fx: FxProvider) -> GroupDetail:
     _require_owner(membership, "Only the group owner can edit the group")
     group = membership.group
+    if data.currency is not None and data.currency != group.currency:
+        # First, so an unavailable rate fails the request before anything is touched; it then
+        # commits with the other edits in one transaction: all of it, or none of it.
+        currency_service.change_group_currency(db, group, data.currency, fx)
     if data.name is not None:
         group.name = data.name.strip()
     if data.simplify_debts is not None:

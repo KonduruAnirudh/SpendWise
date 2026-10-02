@@ -1,6 +1,9 @@
-from fastapi import APIRouter, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, status
 
 from app.core.dependencies import CurrentUser, DbSession, GroupMembership
+from app.fx import FxProvider, get_fx_provider
 from app.models.group import GroupMember
 from app.schemas.group import GroupCreate, GroupDetail, GroupSummary, GroupUpdate, MemberCreate, MemberResponse
 from app.services import group_service
@@ -24,8 +27,13 @@ def get_group(membership: GroupMembership) -> GroupDetail:
 
 
 @router.patch("/{group_id}", response_model=GroupDetail)
-def update_group(data: GroupUpdate, membership: GroupMembership, db: DbSession) -> GroupDetail:
-    return group_service.update_group(db, membership, data)
+def update_group(
+    data: GroupUpdate,
+    membership: GroupMembership,
+    db: DbSession,
+    fx: Annotated[FxProvider, Depends(get_fx_provider)],
+) -> GroupDetail:
+    return group_service.update_group(db, membership, data, fx)
 
 
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)

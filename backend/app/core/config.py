@@ -32,6 +32,9 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5173"
 
+    # Exchange rates for currency conversion (ECB reference rates; no API key needed).
+    fx_api_url: str = "https://api.frankfurter.dev/v1"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

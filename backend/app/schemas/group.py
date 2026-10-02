@@ -2,18 +2,21 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+from app.core.currency import CurrencyCode
 from app.models.enums import MemberRole
 from app.schemas.user import Username
 
 
 class GroupCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
+    currency: CurrencyCode | None = None
 
 
 class GroupUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     simplify_debts: bool | None = None
+    # Converts every amount in the group at today's rate.
+    currency: CurrencyCode | None = None
 
 
 class MemberCreate(BaseModel):
