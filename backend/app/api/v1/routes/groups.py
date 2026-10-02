@@ -2,7 +2,7 @@ from fastapi import APIRouter, status
 
 from app.core.dependencies import CurrentUser, DbSession, GroupMembership
 from app.models.group import GroupMember
-from app.schemas.group import GroupCreate, GroupDetail, GroupSummary, MemberCreate, MemberResponse
+from app.schemas.group import GroupCreate, GroupDetail, GroupSummary, GroupUpdate, MemberCreate, MemberResponse
 from app.services import group_service
 
 router = APIRouter(prefix="/groups", tags=["groups"])
@@ -21,6 +21,11 @@ def create_group(data: GroupCreate, current_user: CurrentUser, db: DbSession) ->
 @router.get("/{group_id}", response_model=GroupDetail)
 def get_group(membership: GroupMembership) -> GroupDetail:
     return group_service.get_group_detail(membership)
+
+
+@router.patch("/{group_id}", response_model=GroupDetail)
+def update_group(data: GroupUpdate, membership: GroupMembership, db: DbSession) -> GroupDetail:
+    return group_service.update_group(db, membership, data)
 
 
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)

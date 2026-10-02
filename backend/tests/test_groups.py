@@ -130,3 +130,43 @@ def test_owner_can_remove_member_and_delete_group(client, auth_headers_for):
 
     assert client.delete(f"{GROUPS}/{group['id']}", headers=asha).status_code == 204
     assert client.get(f"{GROUPS}/{group['id']}", headers=asha).status_code == 404
+
+def test_owner_can_rename_and_toggle_simplify(client, auth_headers_for):
+    asha = auth_headers_for("asha@example.com", full_name="Asha")
+    group = create_group(client, asha)
+    assert group["simplify_debts"] is False
+    assert group["my_role"] == "owner"
+
+    response = client.patch(f"{GROUPS}/{group['id']}", json={"name": " Goa 2026 ", "simplify_debts": True}, headers=asha)
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Goa 2026"
+    assert response.json()["simplify_debts"] is True
+    assert client.get(GROUPS, headers=asha).json()[0]["simplify_debts"] is True
+
+
+def test_only_the_owner_can_edit_the_group(client, auth_headers_for):
+    asha = auth_headers_for("asha@example.com", full_name="Asha")
+    rahul = auth_headers_for("rahul@example.com", full_name="Rahul")
+    group = create_group(client, asha)
+    add_member(client, asha, group["id"], username="rahul")
+
+    response = client.patch(f"{GROUPS}/{group['id']}", json={"name": "Mine now"}, headers=rahul)
+
+    assert response.status_code == 403
+    assert client.get(f"{GROUPS}/{group['id']}", headers=rahul).json()["my_role"] == "member"
+
+
+def test_group_name_cannot_be_blank(client, auth_headers_for):
+    asha = auth_headers_for("asha@example.com")
+    group = create_group(client, asha)
+
+    assert client.patch(f"{GROUPS}/{group['id']}", json={"name": ""}, headers=asha).status_code == 422
+
+
+def test_non_member_cannot_edit_group(client, auth_headers_for):
+    asha = auth_headers_for("asha@example.com")
+    rahul = auth_headers_for("rahul@example.com")
+    group = create_group(client, asha)
+
+    assert client.patch(f"{GROUPS}/{group['id']}", json={"name": "X"}, headers=rahul).status_code == 404

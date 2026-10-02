@@ -11,6 +11,11 @@ class GroupCreate(BaseModel):
     currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
 
 
+class GroupUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    simplify_debts: bool | None = None
+
+
 class MemberCreate(BaseModel):
     """A registered user by username (or email), or a guest by display_name."""
 
@@ -41,6 +46,7 @@ class GroupSummary(BaseModel):
     id: int
     name: str
     currency: str
+    simplify_debts: bool
     member_count: int
     my_role: MemberRole
     created_at: datetime
@@ -50,6 +56,8 @@ class GroupDetail(BaseModel):
     id: int
     name: str
     currency: str
+    simplify_debts: bool
     created_at: datetime
     my_member_id: int
+    my_role: MemberRole
     members: list[MemberResponse]

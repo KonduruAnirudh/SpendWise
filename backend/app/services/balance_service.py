@@ -7,7 +7,7 @@ from app.models.user import User
 from app.repositories import balance_repository, group_repository
 from app.schemas.group_expense import MemberBrief
 from app.schemas.settlement import GroupBalances, MemberBalance, MyGroupPosition, SuggestedSettlement
-from app.services.settlement_engine import simplify_debts
+from app.services.settlement_engine import Transfer, pairwise_transfers, simplify_debts
 from app.services.splitting import from_paise, to_paise
 
 ZERO = Decimal("0.00")
@@ -44,9 +44,18 @@ def member_balances(db: Session, membership: GroupMember) -> list[MemberBalance]
     return balances
 
 
-def suggested_settlements(balances: list[MemberBalance]) -> list[SuggestedSettlement]:
+def suggested_settlements(db: Session, membership: GroupMember, balances: list[MemberBalance]) -> list[SuggestedSettlement]:
+    """Payments that clear the group: pair by pair, or the fewest overall if the group simplifies debts."""
     names = {b.member_id: b.display_name for b in balances}
-    transfers = simplify_debts({b.member_id: to_paise(b.net) for b in balances})
+    nets = {b.member_id: to_paise(b.net) for b in balances}
+    if membership.group.simplify_debts:
+        transfers = simplify_debts(nets)
+    else:
+        transfers = pairwise_transfers(
+            {pair: to_paise(total) for pair, total in balance_repository.shares_owed_by_pair(db, membership.group_id).items()},
+            {pair: to_paise(total) for pair, total in balance_repository.settlements_by_pair(db, membership.group_id).items()},
+        )
+    _check_transfers_clear(nets, transfers, membership.group_id)
     return [
         SuggestedSettlement(
             from_member=MemberBrief(id=t.from_member_id, display_name=names[t.from_member_id]),
@@ -55,6 +64,16 @@ def suggested_settlements(balances: list[MemberBalance]) -> list[SuggestedSettle
         )
         for t in transfers
     ]
+
+
+def _check_transfers_clear(nets: dict[int, int], transfers: list[Transfer], group_id: int) -> None:
+    # Either way, doing every suggested payment must bring every balance to exactly zero.
+    remaining = dict(nets)
+    for t in transfers:
+        remaining[t.from_member_id] += t.amount_paise
+        remaining[t.to_member_id] -= t.amount_paise
+    if any(remaining.values()):
+        raise RuntimeError(f"Suggested settlements for group {group_id} don't clear the balances")
 
 
 def get_group_balances(db: Session, membership: GroupMember) -> GroupBalances:
@@ -69,14 +88,14 @@ def get_group_balances(db: Session, membership: GroupMember) -> GroupBalances:
 
 
 def get_suggested_settlements(db: Session, membership: GroupMember) -> list[SuggestedSettlement]:
-    return suggested_settlements(member_balances(db, membership))
+    return suggested_settlements(db, membership, member_balances(db, membership))
 
 
 def my_group_positions(db: Session, user: User) -> list[MyGroupPosition]:
     positions = []
     for membership in group_repository.list_memberships_for_user(db, user.id):
         balances = member_balances(db, membership)
-        suggestions = suggested_settlements(balances)
+        suggestions = suggested_settlements(db, membership, balances)
         positions.append(
             MyGroupPosition(
                 group_id=membership.group_id,

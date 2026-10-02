@@ -6,7 +6,7 @@ from app.models.enums import MemberRole
 from app.models.group import Group, GroupMember
 from app.models.user import User
 from app.repositories import group_repository, user_repository
-from app.schemas.group import GroupCreate, GroupDetail, GroupSummary, MemberCreate, MemberResponse
+from app.schemas.group import GroupCreate, GroupDetail, GroupSummary, GroupUpdate, MemberCreate, MemberResponse
 
 DUPLICATE_MEMBER = "This person is already a member of the group"
 DUPLICATE_NAME = "A member with this name already exists in the group"
@@ -26,6 +26,7 @@ def list_groups(db: Session, user: User) -> list[GroupSummary]:
             id=m.group.id,
             name=m.group.name,
             currency=m.group.currency,
+            simplify_debts=m.group.simplify_debts,
             member_count=len(m.group.members),
             my_role=m.role,
             created_at=m.group.created_at,
@@ -51,10 +52,24 @@ def get_group_detail(membership: GroupMember) -> GroupDetail:
         id=group.id,
         name=group.name,
         currency=group.currency,
+        simplify_debts=group.simplify_debts,
         created_at=group.created_at,
         my_member_id=membership.id,
+        my_role=membership.role,
         members=[MemberResponse.model_validate(member) for member in group.members],
     )
+
+
+def update_group(db: Session, membership: GroupMember, data: GroupUpdate) -> GroupDetail:
+    _require_owner(membership, "Only the group owner can edit the group")
+    group = membership.group
+    if data.name is not None:
+        group.name = data.name.strip()
+    if data.simplify_debts is not None:
+        group.simplify_debts = data.simplify_debts
+    db.commit()
+    db.refresh(group)
+    return get_group_detail(membership)
 
 
 def add_member(db: Session, membership: GroupMember, data: MemberCreate) -> GroupMember:

@@ -84,13 +84,58 @@ def test_fully_settled_group(client, auth_headers_for):
     assert suggested(client, asha, group_id) == []
 
 
-def test_debt_chain_is_simplified(client, auth_headers_for):
+def test_debt_chain_is_paid_pair_by_pair_by_default(client, auth_headers_for):
     asha, _, group_id, members = setup_goa(client, auth_headers_for)
     add_expense(client, asha, group_id, members, "Asha", "500.00", "reimbursement", [{"member_id": members["Rahul"]}])
     add_expense(client, asha, group_id, members, "Rahul", "500.00", "reimbursement", [{"member_id": members["Arun"]}])
 
     assert nets(client, asha, group_id) == {"Asha": "500.00", "Rahul": "0.00", "Arun": "-500.00"}
+    assert suggested(client, asha, group_id) == [("Rahul", "Asha", "500.00"), ("Arun", "Rahul", "500.00")]
+
+
+def test_debt_chain_is_simplified_when_the_group_opts_in(client, auth_headers_for):
+    asha, _, group_id, members = setup_goa(client, auth_headers_for)
+    add_expense(client, asha, group_id, members, "Asha", "500.00", "reimbursement", [{"member_id": members["Rahul"]}])
+    add_expense(client, asha, group_id, members, "Rahul", "500.00", "reimbursement", [{"member_id": members["Arun"]}])
+
+    client.patch(f"{GROUPS}/{group_id}", json={"simplify_debts": True}, headers=asha)
+
     assert suggested(client, asha, group_id) == [("Arun", "Asha", "500.00")]
+
+
+def test_each_person_pays_whoever_paid_for_them(client, auth_headers_for):
+    """Two payers, two who owe: debts stay with the person who actually paid (Lonavala bug)."""
+    asha = auth_headers_for("asha@example.com", full_name="Asha")
+    group_id = client.post(GROUPS, json={"name": "Lonavala"}, headers=asha).json()["id"]
+    for name in ["Jhon", "Joey", "Ross"]:
+        client.post(f"{GROUPS}/{group_id}/members", json={"display_name": name}, headers=asha)
+    members = {m["display_name"]: m["id"] for m in client.get(f"{GROUPS}/{group_id}/members", headers=asha).json()}
+    add_expense(client, asha, group_id, members, "Asha", "400.00")
+    add_expense(client, asha, group_id, members, "Jhon", "400.00")
+
+    assert suggested(client, asha, group_id) == [
+        ("Joey", "Asha", "100.00"),
+        ("Ross", "Asha", "100.00"),
+        ("Joey", "Jhon", "100.00"),
+        ("Ross", "Jhon", "100.00"),
+    ]
+
+    settle(client, asha, group_id, members, "Joey", "Asha", "100.00")
+    assert ("Joey", "Asha", "100.00") not in suggested(client, asha, group_id)
+
+
+def test_my_group_balances_follow_the_groups_setting(client, auth_headers_for):
+    asha, _, group_id, members = setup_goa(client, auth_headers_for)
+    add_expense(client, asha, group_id, members, "Asha", "500.00", "reimbursement", [{"member_id": members["Rahul"]}])
+    add_expense(client, asha, group_id, members, "Rahul", "500.00", "reimbursement", [{"member_id": members["Arun"]}])
+
+    def owed_to_asha():
+        position = client.get(MY_GROUP_BALANCES, headers=asha).json()[0]
+        return [(s["from_member"]["display_name"], s["amount"]) for s in position["owed_to_me"]]
+
+    assert owed_to_asha() == [("Rahul", "500.00")]
+    client.patch(f"{GROUPS}/{group_id}", json={"simplify_debts": True}, headers=asha)
+    assert owed_to_asha() == [("Arun", "500.00")]
 
 
 def test_settlement_members_must_be_in_group(client, auth_headers_for):
