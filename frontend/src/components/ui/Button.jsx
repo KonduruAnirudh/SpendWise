@@ -20,6 +20,7 @@ export function Button({
   size = 'md',
   className,
   loading = false,
+  disabled = false,
   children,
   ...props
 }) {
@@ -31,8 +32,9 @@ export function Button({
         sizes[size],
         className,
       )}
-      disabled={loading || props.disabled}
       {...props}
+      // After the spread, so an explicit `disabled` can't switch off the loading guard.
+      disabled={loading || disabled}
     >
       {loading && (
         <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />

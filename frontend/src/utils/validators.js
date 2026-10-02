@@ -74,3 +74,43 @@ export function validateSharedExpense(values, splits) {
   }
   return errors
 }
+
+// ---------- Profile ----------
+
+export function validateProfileName(name) {
+  const value = name?.trim() || ''
+  if (!value) return 'Full name is required.'
+  if (value.length < 2) return 'Full name must be at least 2 characters.'
+  if (value.length > 100) return 'Full name must be 100 characters or fewer.'
+  return null
+}
+
+// "30,000" and "30 000" are typed often; the separators carry no meaning.
+export function normalizeAmountInput(value) {
+  return String(value ?? '').replace(/[,\s]/g, '')
+}
+
+// Monthly budget is optional; when given it must be a non-negative amount with at most 2 decimals.
+export function validateMonthlyBudget(value) {
+  if (value === '' || value === null || value === undefined) return null
+  const text = normalizeAmountInput(value)
+  if (!/^\d+(\.\d{1,2})?$/.test(text)) return 'Enter an amount like 30000 or 30000.50.'
+  if (Number(text) > 9999999999.99) return 'That budget is too large.'
+  return null
+}
+
+// Mirrors the API's password rule (8 to 128 characters).
+export const PASSWORD_RULES = [
+  { id: 'length', label: '8 to 128 characters', test: (password) => password.length >= 8 && password.length <= 128 },
+]
+
+export function validatePasswordChange({ currentPassword, newPassword, confirmPassword }) {
+  const errors = {}
+  if (!currentPassword) errors.currentPassword = 'Enter your current password.'
+  if (!newPassword) errors.newPassword = 'Enter a new password.'
+  else if (!PASSWORD_RULES.every((rule) => rule.test(newPassword))) errors.newPassword = 'Use 8 to 128 characters.'
+  else if (newPassword === currentPassword) errors.newPassword = 'Choose a password different from your current one.'
+  if (!confirmPassword) errors.confirmPassword = 'Confirm your new password.'
+  else if (confirmPassword !== newPassword) errors.confirmPassword = "Passwords don't match."
+  return errors
+}

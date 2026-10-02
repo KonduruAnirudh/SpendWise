@@ -79,3 +79,10 @@ export const AI_SUGGESTED_PROMPTS = [
   'What are my account balances?',
   'Who owes me money in my groups?',
 ]
+
+// How the AI assistant should phrase answers (a profile preference).
+export const AI_RESPONSE_STYLES = [
+  { value: 'concise', label: 'Concise', description: 'Short answers with the key numbers.' },
+  { value: 'balanced', label: 'Balanced', description: 'A short answer plus a line of context.' },
+  { value: 'detailed', label: 'Detailed', description: 'Breakdowns and comparisons where useful.' },
+]

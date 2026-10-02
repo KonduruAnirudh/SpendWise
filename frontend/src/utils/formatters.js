@@ -65,3 +65,22 @@ export function savingsRate(income, expenses) {
   if (!income) return 0
   return ((income - expenses) / income) * 100
 }
+
+// "₹" for INR, "$" for USD; falls back to the code itself.
+export function currencySymbol(currency = 'INR') {
+  try {
+    const part = new Intl.NumberFormat(currencyLocale[currency] || 'en-IN', { style: 'currency', currency })
+      .formatToParts(0)
+      .find((item) => item.type === 'currency')
+    return part?.value || currency
+  } catch {
+    return currency
+  }
+}
+
+// "September 2026"
+export function formatMonthYear(iso) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+}

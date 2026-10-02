@@ -1,6 +1,6 @@
 import { cn } from '../../utils/cn'
 
-export function Select({ label, error, className, children, ...props }) {
+export function Select({ label, error, hint, className, children, ...props }) {
   return (
     <label className="block space-y-1.5">
       {label && (
@@ -18,7 +18,11 @@ export function Select({ label, error, className, children, ...props }) {
       >
         {children}
       </select>
-      {error && <span className="text-xs text-danger">{error}</span>}
+      {error ? (
+        <span className="text-xs text-danger">{error}</span>
+      ) : hint ? (
+        <span className="text-xs text-subtle">{hint}</span>
+      ) : null}
     </label>
   )
 }
